@@ -4,8 +4,14 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 /* ─── Video slideshow config ─── */
 const BG_VIDEOS = [
-  '/videos/bg1.mp4', '/videos/bg2.mp4', '/videos/bg3.mp4', '/videos/bg4.mp4',
-  '/videos/bg5.mp4', '/videos/bg6.mp4', '/videos/bg7.mp4', '/videos/bg8.mp4',
+  'https://ucur14dm16l5fxk8.public.blob.vercel-storage.com/bg1.mp4',
+  'https://ucur14dm16l5fxk8.public.blob.vercel-storage.com/bg2.mp4',
+  'https://ucur14dm16l5fxk8.public.blob.vercel-storage.com/bg3.mp4',
+  'https://ucur14dm16l5fxk8.public.blob.vercel-storage.com/bg4.mp4',
+  'https://ucur14dm16l5fxk8.public.blob.vercel-storage.com/bg5.mp4',
+  'https://ucur14dm16l5fxk8.public.blob.vercel-storage.com/bg6.mp4',
+  'https://ucur14dm16l5fxk8.public.blob.vercel-storage.com/bg7.mp4',
+  'https://ucur14dm16l5fxk8.public.blob.vercel-storage.com/bg8.mp4',
 ];
 const CROSSFADE_MS = 1400;
 
