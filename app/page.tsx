@@ -67,18 +67,33 @@ const IconWallet = () => (
 );
 
 const LogoIcon = ({ size = 32 }: { size?: number }) => (
-  <div style={{
-    width: size, height: size,
-    background: 'linear-gradient(140deg, #20a862 0%, #0c5e35 100%)',
-    borderRadius: size * 0.28,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
-    boxShadow: '0 2px 12px rgba(20,140,80,0.35)',
-  }}>
-    <svg viewBox="0 0 24 24" fill="white" style={{ width: size * 0.56, height: size * 0.56 }}>
-      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-    </svg>
-  </div>
+  <svg
+    viewBox="0 0 24 30"
+    fill="none"
+    style={{ width: size * 24 / 30, height: size, flexShrink: 0 }}
+    aria-hidden="true"
+  >
+    <defs>
+      <linearGradient id="et-pin-grad" x1="3" y1="1" x2="21" y2="29" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#34d475" />
+        <stop offset="100%" stopColor="#0d6b35" />
+      </linearGradient>
+    </defs>
+    {/* Pin outer shape */}
+    <path
+      d="M12 1C7.03 1 3 5.03 3 10c0 4.42 3.2 8.22 7.2 13.1L12 29l1.8-5.9C17.8 18.22 21 14.42 21 10c0-4.97-4.03-9-9-9z"
+      fill="url(#et-pin-grad)"
+      style={{ filter: 'drop-shadow(0 3px 8px rgba(13,107,53,0.45))' }}
+    />
+    {/* Clock face */}
+    <circle cx="12" cy="10" r="5.5" fill="white" opacity="0.97" />
+    {/* Hour hand — ~10 o'clock */}
+    <line x1="12" y1="10" x2="9.6" y2="8.6" stroke="#0d6b35" strokeWidth="1.3" strokeLinecap="round" />
+    {/* Minute hand — ~2 o'clock */}
+    <line x1="12" y1="10" x2="15.3" y2="8.1" stroke="#0d6b35" strokeWidth="1" strokeLinecap="round" />
+    {/* Center pivot dot */}
+    <circle cx="12" cy="10" r="0.9" fill="#0d6b35" />
+  </svg>
 );
 
 /* ─── Hover helpers (TS-friendly) ─── */
