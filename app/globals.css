@@ -122,6 +122,11 @@ body {
 
 /* ─── Performance ─── */
 html {
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
 }
 
 * {
@@ -156,3 +161,10 @@ html {
   background-size: 300% 300%;
   animation: ctaBorderShift 8s ease infinite;
 }
+
+/*
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+*/

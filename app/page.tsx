@@ -36,29 +36,6 @@ const IconMap = () => (
   </svg>
 );
 
-const IconPlane = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 26, height: 26 }}>
-    <path d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-  </svg>
-);
-
-const IconBuilding = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 26, height: 26 }}>
-    <path d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
-  </svg>
-);
-
-const IconFork = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 26, height: 26 }}>
-    <path d="M7.5 3.75v16.5m0 0H6m1.5 0H9m-1.5-5.25H9a3 3 0 003-3v-3a3 3 0 00-3-3H7.5m9-3v2.25m0 0A2.25 2.25 0 0118.75 9v.75a2.25 2.25 0 01-2.25 2.25H15m1.5-5.25v12" />
-  </svg>
-);
-
-const IconMountain = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 26, height: 26 }}>
-    <path d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
-  </svg>
-);
 
 const IconWallet = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 26, height: 26 }}>
@@ -113,6 +90,11 @@ export default function HomePage() {
     return () => window.removeEventListener('scroll', fn);
   }, []);
 
+  useEffect(() => {
+    document.documentElement.style.scrollBehavior = 'smooth';
+    return () => { document.documentElement.style.scrollBehavior = ''; };
+  }, []);
+
   // ── Video slideshow ──
   const ref0 = useRef<HTMLVideoElement>(null);
   const ref1 = useRef<HTMLVideoElement>(null);
@@ -148,7 +130,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", color: 'white', overflowX: 'hidden' }}>
+    <div id="top" style={{ fontFamily: "'DM Sans', system-ui, sans-serif", color: 'white', overflowX: 'hidden' }}>
 
       {/* ════════════════════════════════════
           NAVIGATION
@@ -173,7 +155,7 @@ export default function HomePage() {
 
           {/* Desktop links */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 36 }} className="hidden md:flex">
-            {([['Home', '#'], ['How It Works', '#how-it-works'], ['About', '#about']] as [string, string][]).map(([label, href]) => (
+            {([['Home', '#top'], ['How It Works', '#how-it-works'], ['Features', '#features']] as [string, string][]).map(([label, href]) => (
               <a key={label} href={href}
                 style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.62)', textDecoration: 'none', transition: 'color 0.2s ease' }}
                 onMouseEnter={e => hov(e.currentTarget, { color: '#fff' })}
@@ -184,7 +166,7 @@ export default function HomePage() {
           </div>
 
           {/* CTA button */}
-          <button className="hidden md:block"
+          <a href="/plan" className="hidden md:block"
             style={{
               background: 'linear-gradient(140deg, #1e8a52 0%, #0d5530 100%)',
               border: '1px solid rgba(50,160,100,0.35)',
@@ -197,11 +179,13 @@ export default function HomePage() {
               transition: 'transform 0.2s ease, box-shadow 0.2s ease',
               boxShadow: '0 0 22px rgba(26,130,78,0.28)',
               letterSpacing: '-0.01em',
+              textDecoration: 'none',
+              display: 'inline-block',
             }}
             onMouseEnter={e => hov(e.currentTarget, { transform: 'translateY(-2px)', boxShadow: '0 0 32px rgba(26,130,78,0.5)' })}
             onMouseLeave={e => hov(e.currentTarget, { transform: 'translateY(0)', boxShadow: '0 0 22px rgba(26,130,78,0.28)' })}>
             Get Started
-          </button>
+          </a>
 
           {/* Mobile hamburger */}
           <button className="md:hidden"
@@ -227,20 +211,21 @@ export default function HomePage() {
             flexDirection: 'column',
             gap: 18,
           }}>
-            {(['Home', 'How It Works', 'About'] as string[]).map(label => (
-              <a key={label} href="#"
+            {([['Home', '#top'], ['How It Works', '#how-it-works'], ['Features', '#features']] as [string, string][]).map(([label, href]) => (
+              <a key={label} href={href}
                 onClick={() => setMenuOpen(false)}
                 style={{ color: 'rgba(255,255,255,0.78)', fontSize: 16, textDecoration: 'none', fontWeight: 500 }}>
                 {label}
               </a>
             ))}
-            <button style={{
+            <a href="/plan" style={{
               background: 'linear-gradient(140deg, #1e8a52 0%, #0d5530 100%)',
               border: 'none', borderRadius: 9, padding: '13px', fontSize: 15,
               fontWeight: 600, color: 'white', cursor: 'pointer', marginTop: 6,
+              textDecoration: 'none', display: 'block', textAlign: 'center',
             }}>
               Get Started
-            </button>
+            </a>
           </div>
         )}
       </nav>
@@ -366,7 +351,7 @@ export default function HomePage() {
           display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center',
           animationDelay: '0.28s',
         }}>
-          <button
+          <a href="/plan"
             style={{
               background: 'linear-gradient(140deg, #1e8a52 0%, #0e5c34 100%)',
               border: '1px solid rgba(50,170,105,0.38)',
@@ -379,13 +364,16 @@ export default function HomePage() {
               transition: 'transform 0.22s ease, box-shadow 0.22s ease',
               boxShadow: '0 5px 28px rgba(26,138,82,0.4), 0 1px 0 rgba(255,255,255,0.1) inset',
               letterSpacing: '-0.015em',
+              textDecoration: 'none',
+              display: 'inline-block',
             }}
             onMouseEnter={e => hov(e.currentTarget, { transform: 'translateY(-3px)', boxShadow: '0 10px 38px rgba(26,138,82,0.58), 0 1px 0 rgba(255,255,255,0.1) inset' })}
             onMouseLeave={e => hov(e.currentTarget, { transform: 'translateY(0)', boxShadow: '0 5px 28px rgba(26,138,82,0.4), 0 1px 0 rgba(255,255,255,0.1) inset' })}>
             Plan My Trip &rarr;
-          </button>
+          </a>
 
           <button
+            onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
             style={{
               background: 'rgba(255,255,255,0.055)',
               border: '1px solid rgba(255,255,255,0.14)',
@@ -421,7 +409,15 @@ export default function HomePage() {
       {/* ════════════════════════════════════
           HOW IT WORKS
       ════════════════════════════════════ */}
-      <section id="how-it-works" style={{ position: 'relative', zIndex: 10, padding: '120px 24px 140px', background: '#0b1218' }}>
+      <section id="how-it-works" style={{
+        position: 'relative', zIndex: 10, padding: '120px 24px 140px',
+        backgroundImage: 'url(/HowItWorks/pic1.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        overflow: 'hidden',
+      }}>
+        {/* Dark overlay */}
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', pointerEvents: 'none' }} />
         {/* Green glow crown */}
         <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 800, height: 360, background: 'radial-gradient(ellipse at 50% 0%, rgba(67,82,69,0.22) 0%, transparent 58%)', pointerEvents: 'none' }} />
 
@@ -452,13 +448,13 @@ export default function HomePage() {
             {[
               {
                 num: '01',
-                icon: <IconPin />,
+                icon: <IconSparkle />,
                 title: 'Tell Us Your Vibe',
                 desc: 'Beach bum, city explorer, or mountain chaser — tell us where you want to go and how you like to travel. Takes under two minutes.',
               },
               {
                 num: '02',
-                icon: <IconSparkle />,
+                icon: <IconWallet />,
                 title: 'We Build the Plan',
                 desc: 'Real flights, real hotels, real restaurants — all personalized and sequenced into a day-by-day itinerary you\'ll actually want to follow.',
               },
@@ -471,7 +467,7 @@ export default function HomePage() {
             ].map((step, i) => (
               <div key={i}
                 style={{
-                  background: 'rgba(13,22,18,0.72)',
+                  background: 'rgba(13,22,18,0.52)',
                   border: '1px solid rgba(67,82,69,0.28)',
                   borderRadius: 20,
                   padding: '44px 38px',
@@ -488,7 +484,7 @@ export default function HomePage() {
                 <div className="et-display" style={{
                   position: 'absolute', bottom: -28, right: -8,
                   fontSize: 180, fontWeight: 900,
-                  color: 'rgba(67,82,69,0.1)',
+                  color: 'rgba(255,255,255,0.35)',
                   lineHeight: 1, userSelect: 'none', pointerEvents: 'none',
                   letterSpacing: '-0.06em',
                 }}>
@@ -534,7 +530,7 @@ export default function HomePage() {
       {/* ════════════════════════════════════
           FEATURES
       ════════════════════════════════════ */}
-      <section style={{ position: 'relative', zIndex: 10, padding: '120px 24px 140px', background: '#080d16' }}>
+      <section id="features" style={{ position: 'relative', zIndex: 10, padding: '120px 24px 140px', background: '#080d16' }}>
         {/* Subtle atmospheric texture */}
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 65% 50% at 8% 88%, rgba(20,40,28,0.3) 0%, transparent 52%), radial-gradient(ellipse 55% 45% at 92% 12%, rgba(8,18,40,0.35) 0%, transparent 52%)', pointerEvents: 'none' }} />
 
@@ -564,61 +560,75 @@ export default function HomePage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 22 }}>
             {[
               {
-                icon: <IconSparkle />,
                 title: 'Personalized Itineraries',
                 desc: 'Tell us your vibe — beach bum, city explorer, mountain chaser — and we\'ll handle everything else, down to the best local coffee stops.',
+                img: '/features/card1.jpg',
+                imgPos: 'center 80%',
               },
               {
-                icon: <IconPlane />,
                 title: 'Live Flight & Hotel Prices',
                 desc: 'Live flight prices so you always fly smart, not expensive. Real hotel availability synced to your exact dates — no surprises at checkout.',
+                img: '/features/card2.jpg',
+                imgPos: 'center 20%',
               },
               {
-                icon: <IconFork />,
                 title: 'Restaurant Recommendations',
                 desc: 'Hand-curated local dining — not just the Yelp top-10. Filtered by cuisine, price, and where you\'ll actually be that day.',
+                img: '/features/card3.jpg',
               },
               {
-                icon: <IconMap />,
                 title: 'Drive Times & Routes',
                 desc: 'Your route fully optimized so you\'re never backtracking. Real drive times, fuel estimates, and the scenic detours worth taking.',
+                img: '/features/card4.jpg',
               },
               {
-                icon: <IconMountain />,
                 title: 'National Park Info',
                 desc: 'Entrance fees, permit requirements, best trails by season, and ranger tips — pulled fresh from NPS data, not some outdated blog.',
+                img: '/features/card5.jpg',
               },
               {
-                icon: <IconWallet />,
                 title: 'Budget Tracking',
                 desc: 'See your real spend before you land: flights, hotels, food, activities — broken down so you can splurge on what actually matters.',
+                img: '/features/card6.jpg',
               },
             ].map((f, i) => (
               <div key={i}
                 style={{
-                  background: 'rgba(10,16,24,0.82)',
+                  position: 'relative',
+                  overflow: 'hidden',
                   border: '1px solid rgba(67,82,69,0.2)',
                   borderRadius: 16,
                   padding: '34px 32px',
-                  display: 'flex', gap: 24, alignItems: 'flex-start',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center',
                   boxShadow: '0 0 0 1px rgba(67,82,69,0.05), 0 2px 24px rgba(0,0,0,0.5)',
                   transition: 'border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease',
                   cursor: 'default',
                 }}
-                onMouseEnter={e => hov(e.currentTarget, { borderColor: 'rgba(67,145,88,0.5)', boxShadow: '0 0 30px rgba(67,145,88,0.12), 0 0 0 1px rgba(67,145,88,0.2), 0 6px 36px rgba(0,0,0,0.55)', transform: 'translateY(-4px)' })}
-                onMouseLeave={e => hov(e.currentTarget, { borderColor: 'rgba(67,82,69,0.2)', boxShadow: '0 0 0 1px rgba(67,82,69,0.05), 0 2px 24px rgba(0,0,0,0.5)', transform: 'translateY(0)' })}>
-                <div style={{
-                  width: 60, height: 60, flexShrink: 0,
-                  background: 'linear-gradient(140deg, rgba(67,82,69,0.28) 0%, rgba(15,30,20,0.14) 100%)',
-                  border: '1px solid rgba(67,82,69,0.38)',
-                  borderRadius: 14,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#7aad7e',
-                  boxShadow: '0 0 20px rgba(67,82,69,0.18)',
+                onMouseEnter={e => {
+                  hov(e.currentTarget, { borderColor: 'rgba(67,145,88,0.5)', boxShadow: '0 0 30px rgba(67,145,88,0.12), 0 0 0 1px rgba(67,145,88,0.2), 0 6px 36px rgba(0,0,0,0.55)', transform: 'translateY(-4px)' });
+                  const overlay = e.currentTarget.querySelector('.feat-overlay') as HTMLElement | null;
+                  if (overlay) overlay.style.background = 'rgba(0,0,0,0.42)';
+                }}
+                onMouseLeave={e => {
+                  hov(e.currentTarget, { borderColor: 'rgba(67,82,69,0.2)', boxShadow: '0 0 0 1px rgba(67,82,69,0.05), 0 2px 24px rgba(0,0,0,0.5)', transform: 'translateY(0)' });
+                  const overlay = e.currentTarget.querySelector('.feat-overlay') as HTMLElement | null;
+                  if (overlay) overlay.style.background = 'rgba(0,0,0,0.62)';
                 }}>
-                  <div style={{ transform: 'scale(1.15)', display: 'flex' }}>{f.icon}</div>
-                </div>
-                <div>
+                {/* Background image */}
+                <img src={f.img} alt="" aria-hidden="true" style={{
+                  position: 'absolute', inset: 0, width: '100%', height: '100%',
+                  objectFit: 'cover', objectPosition: f.imgPos ?? 'center',
+                  pointerEvents: 'none',
+                }} />
+                {/* Dark overlay */}
+                <div className="feat-overlay" style={{
+                  position: 'absolute', inset: 0,
+                  background: 'rgba(0,0,0,0.62)',
+                  transition: 'background 0.3s ease',
+                  pointerEvents: 'none',
+                }} />
+                {/* Content */}
+                <div style={{ position: 'relative', zIndex: 1 }}>
                   <h4 style={{ fontSize: 17, fontWeight: 700, color: '#e8ede9', marginBottom: 10, letterSpacing: '-0.015em' }}>
                     {f.title}
                   </h4>
@@ -640,7 +650,7 @@ export default function HomePage() {
       {/* ════════════════════════════════════
           CTA
       ════════════════════════════════════ */}
-      <section style={{ position: 'relative', zIndex: 10, padding: '100px 24px 140px', background: '#0b1218' }}>
+      <section style={{ position: 'relative', zIndex: 10, padding: '100px 24px 140px', background: '#0b1218', overflow: 'hidden' }}>
         <div style={{ maxWidth: 780, margin: '0 auto', textAlign: 'center' }}>
           {/* Animated gradient border wrapper */}
           <div className="cta-border" style={{ position: 'relative', padding: 2, borderRadius: 28 }}>
@@ -685,7 +695,7 @@ export default function HomePage() {
                 No subscription. No account needed to start. Just your destination and a minute of your time.
               </p>
 
-              <button
+              <a href="/plan"
                 style={{
                   background: 'linear-gradient(140deg, #1e8a52 0%, #0d5c34 100%)',
                   border: '1px solid rgba(80,200,130,0.25)',
@@ -699,11 +709,13 @@ export default function HomePage() {
                   boxShadow: '0 6px 36px rgba(26,138,82,0.44), 0 1px 0 rgba(255,255,255,0.12) inset',
                   letterSpacing: '-0.015em',
                   position: 'relative',
+                  textDecoration: 'none',
+                  display: 'inline-block',
                 }}
                 onMouseEnter={e => hov(e.currentTarget, { transform: 'translateY(-4px)', boxShadow: '0 14px 48px rgba(26,138,82,0.64), 0 1px 0 rgba(255,255,255,0.12) inset' })}
                 onMouseLeave={e => hov(e.currentTarget, { transform: 'translateY(0)', boxShadow: '0 6px 36px rgba(26,138,82,0.44), 0 1px 0 rgba(255,255,255,0.12) inset' })}>
                 Plan My Trip — It&rsquo;s Free
-              </button>
+              </a>
             </div>
           </div>
         </div>
@@ -717,6 +729,7 @@ export default function HomePage() {
         background: '#030810',
         borderTop: '1px solid rgba(67,82,69,0.18)',
         padding: '56px 24px 48px',
+        overflow: 'hidden',
       }}>
         {/* Soft green glow at top */}
         <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 700, height: 130, background: 'radial-gradient(ellipse at 50% 0%, rgba(67,82,69,0.1) 0%, transparent 68%)', pointerEvents: 'none' }} />
@@ -741,8 +754,13 @@ export default function HomePage() {
 
           {/* Links */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28 }}>
-            {(['Home', 'How It Works', 'About', 'Contact'] as string[]).map(label => (
-              <a key={label} href="#"
+            {([
+              ['Home', '#top'],
+              ['How It Works', '#how-it-works'],
+              ['Features', '#features'],
+              ['Contact', 'mailto:this.is.a.tester.33@gmail.com'],
+            ] as [string, string][]).map(([label, href]) => (
+              <a key={label} href={href}
                 style={{ color: 'rgba(200,218,204,0.42)', fontSize: 14, textDecoration: 'none', transition: 'color 0.2s ease', fontWeight: 500 }}
                 onMouseEnter={e => hov(e.currentTarget, { color: 'rgba(200,218,204,0.88)' })}
                 onMouseLeave={e => hov(e.currentTarget, { color: 'rgba(200,218,204,0.42)' })}>
