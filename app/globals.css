@@ -152,19 +152,60 @@ body {
 .cta-border {
   background: linear-gradient(
     135deg,
-    rgba(67,130,80,0.7),
-    rgba(20,60,35,0.3),
-    rgba(30,138,82,0.65),
-    rgba(10,40,25,0.3),
-    rgba(67,110,78,0.6)
+    rgba(200,145,58,0.55),
+    rgba(30,90,50,0.25),
+    rgba(200,145,58,0.5),
+    rgba(15,50,30,0.2),
+    rgba(180,125,45,0.5)
   );
   background-size: 300% 300%;
   animation: ctaBorderShift 8s ease infinite;
 }
 
-/*
-html, body {
-  overflow-x: hidden;
-  max-width: 100%;
+/* ─── Feature bento grid ─── */
+.feat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
 }
-*/
+
+.feat-card-wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 800px) {
+  .feat-grid {
+    grid-template-columns: 1fr;
+  }
+  .feat-card-wide {
+    grid-column: span 1;
+  }
+}
+
+/* ─── Footer grid ─── */
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 48px;
+  margin-bottom: 48px;
+}
+
+@media (max-width: 640px) {
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+
+/* ─── Stats grid ─── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+
+@media (max-width: 600px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
