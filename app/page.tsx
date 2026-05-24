@@ -3,6 +3,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 /* ─── Video slideshow config ─── */
 const BG_VIDEOS = [
@@ -78,6 +79,19 @@ export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isWide, setIsWide] = useState(true);
+  const [authed, setAuthed] = useState(false);
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setAuthed(!!data.session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setAuthed(!!session));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setAuthed(false);
+  }
 
   useEffect(() => {
     const checkWidth = () => setIsWide(window.innerWidth >= 800);
@@ -163,26 +177,48 @@ export default function HomePage() {
           </div>
 
           {/* CTA */}
-          <a href="/plan" className="hidden md:block"
-            style={{
-              background: 'linear-gradient(135deg, #1e6b42 0%, #0e4428 100%)',
-              border: '1px solid rgba(46,140,88,0.38)',
-              borderRadius: 8,
-              padding: '9px 22px',
-              fontSize: 13.5,
-              fontWeight: 600,
-              color: '#ede8df',
-              textDecoration: 'none',
-              display: 'inline-block',
-              letterSpacing: '-0.01em',
-              cursor: 'pointer',
-              boxShadow: '0 2px 18px rgba(18,90,54,0.32)',
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-            }}
-            onMouseEnter={e => hov(e.currentTarget, { transform: 'translateY(-1px)', boxShadow: '0 4px 26px rgba(18,90,54,0.52)' })}
-            onMouseLeave={e => hov(e.currentTarget, { transform: 'translateY(0)', boxShadow: '0 2px 18px rgba(18,90,54,0.32)' })}>
-            Get Started
-          </a>
+          <div className="hidden md:flex" style={{ alignItems: 'center', gap: 10 }}>
+            {authed && (
+              <button onClick={handleLogout}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(237,232,223,0.14)',
+                  borderRadius: 8,
+                  padding: '9px 18px',
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  color: 'rgba(237,232,223,0.48)',
+                  cursor: 'pointer',
+                  letterSpacing: '-0.01em',
+                  transition: 'color 0.2s ease, border-color 0.2s ease',
+                  fontFamily: "'DM Sans', system-ui, sans-serif",
+                }}
+                onMouseEnter={e => hov(e.currentTarget, { color: '#ede8df', borderColor: 'rgba(237,232,223,0.28)' })}
+                onMouseLeave={e => hov(e.currentTarget, { color: 'rgba(237,232,223,0.48)', borderColor: 'rgba(237,232,223,0.14)' })}>
+                Log Out
+              </button>
+            )}
+            <a href={authed ? '/plan' : '/auth'}
+              style={{
+                background: 'linear-gradient(135deg, #1e6b42 0%, #0e4428 100%)',
+                border: '1px solid rgba(46,140,88,0.38)',
+                borderRadius: 8,
+                padding: '9px 22px',
+                fontSize: 13.5,
+                fontWeight: 600,
+                color: '#ede8df',
+                textDecoration: 'none',
+                display: 'inline-block',
+                letterSpacing: '-0.01em',
+                cursor: 'pointer',
+                boxShadow: '0 2px 18px rgba(18,90,54,0.32)',
+                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+              }}
+              onMouseEnter={e => hov(e.currentTarget, { transform: 'translateY(-1px)', boxShadow: '0 4px 26px rgba(18,90,54,0.52)' })}
+              onMouseLeave={e => hov(e.currentTarget, { transform: 'translateY(0)', boxShadow: '0 2px 18px rgba(18,90,54,0.32)' })}>
+              {authed ? 'My Trips' : 'Get Started'}
+            </a>
+          </div>
 
           {/* Mobile hamburger */}
           <button className="md:hidden"
@@ -213,13 +249,24 @@ export default function HomePage() {
                 {label}
               </a>
             ))}
-            <a href="/plan" style={{
+            {authed && (
+              <button onClick={handleLogout} style={{
+                background: 'transparent', border: '1px solid rgba(237,232,223,0.14)',
+                borderRadius: 8, padding: '13px', fontSize: 15,
+                fontWeight: 500, color: 'rgba(237,232,223,0.55)', cursor: 'pointer',
+                display: 'block', textAlign: 'center', width: '100%',
+                fontFamily: "'DM Sans', system-ui, sans-serif",
+              }}>
+                Log Out
+              </button>
+            )}
+            <a href={authed ? '/plan' : '/auth'} style={{
               background: 'linear-gradient(135deg, #1e6b42 0%, #0e4428 100%)',
               border: 'none', borderRadius: 8, padding: '13px', fontSize: 15,
               fontWeight: 600, color: '#ede8df', textDecoration: 'none',
               display: 'block', textAlign: 'center', marginTop: 4,
             }}>
-              Get Started
+              {authed ? 'My Trips' : 'Get Started'}
             </a>
           </div>
         )}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 const STEPS = [
   'Destination & Dates',
@@ -1665,6 +1666,7 @@ function Step4({ data, onChange, onSubmit, loading }: { data: FormData; onChange
 /* ═══════════════════════════════════════════ */
 export default function PlanPageClient() {
   const router = useRouter();
+  const supabase = createClient();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
@@ -1677,6 +1679,11 @@ export default function PlanPageClient() {
   const skipNextSave = useRef(true);
 
   const update = (partial: Partial<FormData>) => setForm(f => ({ ...f, ...partial }));
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.replace('/auth');
+  }
 
   // Restore from localStorage on mount
   useEffect(() => {
@@ -1809,8 +1816,27 @@ export default function PlanPageClient() {
             <LogoIcon size={30} />
             <span className="et-display" style={{ fontWeight: 700, fontSize: 20, color: 'white', letterSpacing: '-0.02em' }}>Easy Trip</span>
           </a>
-          <div style={{ fontSize: 13, color: C.textMuted }}>
-            Step <span style={{ color: C.greenBright, fontWeight: 600 }}>{step + 1}</span> / {STEPS.length}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <div style={{ fontSize: 13, color: C.textMuted }}>
+              Step <span style={{ color: C.greenBright, fontWeight: 600 }}>{step + 1}</span> / {STEPS.length}
+            </div>
+            <button onClick={handleLogout} style={{
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.10)',
+              borderRadius: 7,
+              padding: '7px 15px',
+              fontSize: 13,
+              fontWeight: 500,
+              color: 'rgba(255,255,255,0.38)',
+              cursor: 'pointer',
+              fontFamily: "'DM Sans', system-ui, sans-serif",
+              transition: 'color 0.2s ease, border-color 0.2s ease',
+            }}
+              onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { color: 'rgba(255,255,255,0.75)', borderColor: 'rgba(255,255,255,0.22)' })}
+              onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { color: 'rgba(255,255,255,0.38)', borderColor: 'rgba(255,255,255,0.10)' })}
+            >
+              Log Out
+            </button>
           </div>
         </div>
       </nav>
