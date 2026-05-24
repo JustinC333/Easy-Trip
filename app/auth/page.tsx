@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -71,7 +71,7 @@ function isRateLimit(msg: string, status?: number) {
   return status === 429 || msg.includes('over_email_send_rate_limit') || msg.includes('rate limit')
 }
 
-export default function AuthPage() {
+function AuthPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
@@ -745,5 +745,24 @@ export default function AuthPage() {
         ← Back to home
       </a>
     </div>
+  )
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#0a0f0a',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+      }}>
+        Loading...
+      </div>
+    }>
+      <AuthPageContent />
+    </Suspense>
   )
 }
