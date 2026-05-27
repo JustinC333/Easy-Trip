@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Recap — Easy Trip · May 27 2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #030810;
+    --surface: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+    --green: #34d475;
+    --green-dim: rgba(52,212,117,0.18);
+    --green-border: rgba(52,212,117,0.3);
+    --text: #ffffff;
+    --text-2: rgba(255,255,255,0.65);
+    --text-3: rgba(255,255,255,0.38);
+    --red: rgba(239,68,68,0.85);
+    --mono: 'DM Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── aurora ── */
+  .aurora {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+  }
+  .aurora-a {
+    position: absolute; top: -8%; left: 15%; width: 800px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(26,130,78,0.16) 0%, transparent 68%);
+    animation: drift 18s ease-in-out infinite alternate;
+  }
+  .aurora-b {
+    position: absolute; bottom: 5%; right: 10%; width: 600px; height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(13,107,53,0.12) 0%, transparent 68%);
+    animation: drift 24s ease-in-out infinite alternate-reverse;
+  }
+  @keyframes drift {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(40px, 30px) scale(1.06); }
+  }
+
+  /* ── layout ── */
+  .page {
+    position: relative; z-index: 1;
+    max-width: 800px; margin: 0 auto;
+    padding: 64px 28px 100px;
+  }
+
+  /* ── header ── */
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--green-dim);
+    border: 1px solid var(--green-border);
+    border-radius: 100px; padding: 5px 14px;
+    font-size: 12px; font-weight: 600; color: var(--green);
+    letter-spacing: 0.04em; text-transform: uppercase;
+    margin-bottom: 22px;
+  }
+  .chip-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+  }
+
+  h1 {
+    font-size: clamp(32px, 5vw, 48px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+  h1 span { color: var(--green); }
+
+  .sub {
+    font-size: 15px; color: var(--text-2); line-height: 1.6; margin-bottom: 48px;
+    max-width: 560px;
+  }
+
+  /* ── divider ── */
+  .divider {
+    height: 1px; background: var(--border); margin: 40px 0;
+  }
+
+  /* ── section heading ── */
+  .section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+    color: var(--text-3); text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ── cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 26px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.14); }
+
+  .card-title {
+    font-size: 14px; font-weight: 700;
+    color: var(--text);
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .badge {
+    font-size: 11px; font-weight: 600;
+    background: var(--green-dim);
+    border: 1px solid var(--green-border);
+    color: var(--green);
+    border-radius: 6px; padding: 2px 8px;
+    letter-spacing: 0.03em;
+  }
+  .badge-new {
+    background: rgba(52,212,117,0.22);
+    border-color: rgba(52,212,117,0.5);
+  }
+  .badge-edit {
+    background: rgba(251,191,36,0.12);
+    border: 1px solid rgba(251,191,36,0.3);
+    color: #fbbf24;
+  }
+
+  .card-body { font-size: 13.5px; color: var(--text-2); line-height: 1.65; }
+
+  /* ── filepath ── */
+  .filepath {
+    font-family: var(--mono); font-size: 12.5px;
+    color: var(--green);
+    background: rgba(52,212,117,0.07);
+    border: 1px solid rgba(52,212,117,0.18);
+    border-radius: 7px; padding: 3px 10px;
+    display: inline-block; margin-bottom: 10px;
+  }
+
+  /* ── step list ── */
+  .steps {
+    display: flex; flex-direction: column; gap: 10px;
+    margin-top: 14px;
+  }
+  .step {
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .step-num {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(52,212,117,0.15);
+    border: 1px solid rgba(52,212,117,0.35);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--green);
+    margin-top: 1px;
+  }
+  .step-text { font-size: 13.5px; color: var(--text-2); line-height: 1.55; }
+  .step-text strong { color: var(--text); font-weight: 600; }
+  .step-text code {
+    font-family: var(--mono); font-size: 12px;
+    background: rgba(255,255,255,0.07); border-radius: 4px; padding: 1px 6px;
+    color: rgba(255,255,255,0.8);
+  }
+
+  /* ── feature pills ── */
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .pill {
+    font-size: 12px; font-weight: 500;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 100px; padding: 5px 13px;
+    color: var(--text-2);
+  }
+  .pill-green {
+    background: var(--green-dim);
+    border-color: var(--green-border);
+    color: var(--green);
+  }
+
+  /* ── stat row ── */
+  .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    margin-bottom: 40px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px;
+    text-align: center;
+  }
+  .stat-val {
+    font-size: 28px; font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--green); line-height: 1;
+    margin-bottom: 5px;
+  }
+  .stat-label {
+    font-size: 11px; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+  }
+
+  /* ── flow diagram ── */
+  .flow {
+    display: flex; flex-direction: column; gap: 0;
+    margin: 14px 0 4px;
+  }
+  .flow-item {
+    display: flex; align-items: stretch; gap: 14px;
+  }
+  .flow-line-col {
+    display: flex; flex-direction: column; align-items: center; width: 22px; flex-shrink: 0;
+  }
+  .flow-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    background: var(--green); box-shadow: 0 0 8px rgba(52,212,117,0.5);
+    margin-top: 4px;
+  }
+  .flow-connector {
+    flex: 1; width: 2px;
+    background: linear-gradient(to bottom, rgba(52,212,117,0.4), rgba(52,212,117,0.1));
+  }
+  .flow-item:last-child .flow-connector { display: none; }
+  .flow-content {
+    padding-bottom: 14px;
+    font-size: 13px; color: var(--text-2); line-height: 1.5;
+    padding-top: 1px;
+  }
+  .flow-content strong { color: var(--text); font-weight: 600; }
+  .flow-content code {
+    font-family: var(--mono); font-size: 11.5px;
+    background: rgba(255,255,255,0.07); border-radius: 4px; padding: 1px 6px;
+    color: rgba(255,255,255,0.75);
+  }
+
+  /* ── footer ── */
+  footer {
+    margin-top: 60px;
+    padding-top: 28px;
+    border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--text-3);
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 8px;
+  }
+  footer span { color: var(--green); }
+</style>
+</head>
+<body>
+
+<div class="aurora">
+  <div class="aurora-a"></div>
+  <div class="aurora-b"></div>
+</div>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="chip">
+    <div class="chip-dot"></div>
+    Session · May 27 2026
+  </div>
+
+  <h1>Trip Pipeline<br><span>Wired End-to-End</span></h1>
+  <p class="sub">
+    Full recap of what was built in this session — the master orchestration API and the updated plan form with real submission, a fullscreen loading overlay, and error handling.
+  </p>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val">1</div>
+      <div class="stat-label">New file</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">4</div>
+      <div class="stat-label">Edits made</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">8</div>
+      <div class="stat-label">Pipeline steps</div>
+    </div>
+  </div>
+
+  <!-- Part 1 -->
+  <div class="section-label">Part 1 — New API Route</div>
+
+  <div class="card">
+    <div class="card-title">
+      <span class="badge badge-new">NEW</span>
+      Master Orchestration Endpoint
+    </div>
+    <div class="filepath">app/api/plan/route.ts</div>
+    <div class="card-body">
+      A single <code style="font-family:monospace;font-size:12px;background:rgba(255,255,255,0.07);border-radius:4px;padding:1px 6px;">POST /api/plan</code> endpoint that drives the entire trip generation pipeline in sequence. Every step is console-logged for debugging.
+    </div>
+
+    <div class="flow" style="margin-top:20px;">
+
+      <div class="flow-item">
+        <div class="flow-line-col"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content"><strong>Step 1 — Authenticate</strong><br>Calls <code>supabase.auth.getUser()</code>. Returns <code>401</code> if no session.</div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-line-col"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content"><strong>Step 2 — Validate input</strong><br>Requires at least one destination with state + city, plus start/end dates. Returns <code>400</code> on failure.</div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-line-col"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content"><strong>Step 3 — Cost guard</strong><br>Calls <code>checkAndReserve(userId, 3000)</code>. Returns <code>429</code> if the user has hit their monthly token ceiling.</div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-line-col"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content"><strong>Step 4 — Enrich</strong><br>Calls <code>POST /api/enrich</code> with the first destination. If it fails for any reason, enrichment is set to <code>null</code> and generation continues — enrichment is never a blocker.</div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-line-col"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content"><strong>Step 5 — Generate</strong><br>Calls <code>POST /api/generate</code> with the full form body + <code>enrichedContext</code>. Returns <code>500</code> if Claude fails.</div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-line-col"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content"><strong>Step 6 — Record usage</strong><br>Calls <code>recordUsage(userId, tokensUsed)</code> with the actual token count returned by the generate step.</div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-line-col"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content"><strong>Step 7 — Save trip</strong><br>Builds a human-readable destination string (<code>City, State → City, State</code>), then calls <code>saveTrip()</code> which inserts to Supabase and returns a <code>tripId</code>.</div>
+      </div>
+
+      <div class="flow-item">
+        <div class="flow-line-col"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content"><strong>Step 8 — Done</strong><br>Returns <code>{ tripId }</code> with status <code>200</code>.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Part 2 -->
+  <div class="section-label">Part 2 — Plan Form Updates</div>
+
+  <div class="card">
+    <div class="card-title">
+      <span class="badge badge-edit">EDIT</span>
+      Real Submit Handler
+    </div>
+    <div class="filepath">app/plan/PlanPageClient.tsx — handleSubmit</div>
+    <div class="card-body">
+      Replaced the placeholder <code style="font-family:monospace;font-size:12px;background:rgba(255,255,255,0.07);border-radius:4px;padding:1px 6px;">alert("coming soon")</code> with a real implementation.
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">Computes <strong>headCount</strong> from <code>groupSize</code> + <code>groupCount</code>, then derives <code>budgetPerPerson</code></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">Builds the full request body and calls <strong>POST /api/plan</strong></div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">On <strong>success</strong> — clears <code>localStorage</code> key <code>easytrip-plan</code>, then <code>router.push('/trips/[tripId]')</code></div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">On <strong>error</strong> — maps status codes to specific messages: 429 → limit reached, 401 → sign in, 500 → generic, network error → connection failed</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <span class="badge badge-edit">EDIT</span>
+      Fullscreen Loading Overlay
+    </div>
+    <div class="filepath">app/plan/PlanPageClient.tsx — overlay JSX</div>
+    <div class="card-body">
+      Renders over everything (<code style="font-family:monospace;font-size:12px;background:rgba(255,255,255,0.07);border-radius:4px;padding:1px 6px;">z-index: 300</code>, blurred dark backdrop) while the API call is in flight.
+    </div>
+    <div class="pills" style="margin-top:14px;">
+      <span class="pill pill-green">Animated spinner + logo</span>
+      <span class="pill pill-green">5 rotating messages</span>
+      <span class="pill pill-green">3-second interval</span>
+      <span class="pill">Resets on dismiss</span>
+      <span class="pill">"30–60 seconds" sub-label</span>
+    </div>
+
+    <div style="margin-top:16px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--text-3);text-transform:uppercase;margin-bottom:10px;">Rotating messages</div>
+      <ol style="padding-left:18px;display:flex;flex-direction:column;gap:5px;">
+        <li style="font-size:13px;color:var(--text-2);">Analyzing your destinations...</li>
+        <li style="font-size:13px;color:var(--text-2);">Checking flights and hotels...</li>
+        <li style="font-size:13px;color:var(--text-2);">Building your day-by-day itinerary...</li>
+        <li style="font-size:13px;color:var(--text-2);">Adding local recommendations...</li>
+        <li style="font-size:13px;color:var(--text-2);">Almost ready...</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <span class="badge badge-edit">EDIT</span>
+      Error Display in Step 4
+    </div>
+    <div class="filepath">app/plan/PlanPageClient.tsx — Step4 component</div>
+    <div class="card-body">
+      A red error card appears below the "Plan My Trip" button on failure. The loading overlay hides, the form stays intact, and the user sees a specific message explaining what went wrong.
+    </div>
+    <div style="margin-top:14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:12px 16px;font-size:13px;color:rgba(239,68,68,0.9);display:flex;gap:8px;align-items:flex-start;">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px;flex-shrink:0;margin-top:1px;">
+        <circle cx="7" cy="7" r="6"/><path d="M7 4v3M7 10v.5"/>
+      </svg>
+      You've reached your monthly AI limit. Please try again next month.
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Data flow -->
+  <div class="section-label">Data Flow — Form Fields → API</div>
+
+  <div class="card">
+    <div class="card-body" style="font-family:var(--mono);font-size:12.5px;line-height:1.8;color:rgba(255,255,255,0.6);">
+      <span style="color:rgba(52,212,117,0.8);">form.destinations</span>   → <span style="color:rgba(255,255,255,0.85);">destinations</span><br>
+      <span style="color:rgba(52,212,117,0.8);">form.startDate</span>       → <span style="color:rgba(255,255,255,0.85);">startDate</span><br>
+      <span style="color:rgba(52,212,117,0.8);">form.endDate</span>         → <span style="color:rgba(255,255,255,0.85);">endDate</span><br>
+      <span style="color:rgba(52,212,117,0.8);">form.groupSize</span>       → <span style="color:rgba(255,255,255,0.85);">groupSize</span><br>
+      <span style="color:rgba(52,212,117,0.8);">(computed headCount)</span>  → <span style="color:rgba(255,255,255,0.85);">numberOfPeople</span><br>
+      <span style="color:rgba(52,212,117,0.8);">form.travelStyles</span>    → <span style="color:rgba(255,255,255,0.85);">travelStyles</span><br>
+      <span style="color:rgba(52,212,117,0.8);">form.transportation</span>  → <span style="color:rgba(255,255,255,0.85);">transportation</span><br>
+      <span style="color:rgba(52,212,117,0.8);">form.accommodation</span>   → <span style="color:rgba(255,255,255,0.85);">accommodation</span><br>
+      <span style="color:rgba(52,212,117,0.8);">form.budget</span>          → <span style="color:rgba(255,255,255,0.85);">totalBudget</span><br>
+      <span style="color:rgba(52,212,117,0.8);">(budget / headCount)</span>  → <span style="color:rgba(255,255,255,0.85);">budgetPerPerson</span><br>
+      <span style="color:rgba(52,212,117,0.8);">form.flightBudget</span>    → <span style="color:rgba(255,255,255,0.85);">flightBudgetPerPerson?</span><br>
+      <span style="color:rgba(52,212,117,0.8);">form.accommodationBudget</span> → <span style="color:rgba(255,255,255,0.85);">accommodationBudget?</span><br>
+      <span style="color:rgba(52,212,117,0.8);">form.mustHaves</span>       → <span style="color:rgba(255,255,255,0.85);">mustHaves?</span>
+    </div>
+  </div>
+
+  <footer>
+    <div>Easy Trip · Session recap · <span>May 27 2026</span></div>
+    <div style="font-family:var(--mono);font-size:11px;">session-2026-05-27.html</div>
+  </footer>
+
+</div>
+</body>
+</html>

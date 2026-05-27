@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session — Trash / Recycle Bin Feature</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #030810;
+    --surface: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+    --green: #34d475;
+    --green-dim: #1e8a52;
+    --green-dark: #0d5530;
+    --text: #ffffff;
+    --text-sec: rgba(255,255,255,0.62);
+    --text-muted: rgba(255,255,255,0.38);
+    --red: #ef4444;
+    --amber: #fb923c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* Background glow */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -10%;
+    left: 25%;
+    width: 700px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(26,130,78,0.12) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 60px 32px 100px;
+  }
+
+  /* ── Header ── */
+  .session-header {
+    margin-bottom: 52px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .session-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(52,212,117,0.09);
+    border: 1px solid rgba(52,212,117,0.2);
+    border-radius: 100px;
+    padding: 5px 13px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--green);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .session-tag::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px rgba(52,212,117,0.8);
+  }
+
+  h1 {
+    font-size: clamp(26px, 4vw, 38px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 14px;
+    color: var(--text);
+  }
+
+  .session-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-top: 18px;
+  }
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .meta-item span {
+    color: var(--text-sec);
+    font-weight: 500;
+  }
+
+  /* ── Section ── */
+  .section {
+    margin-bottom: 44px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 16px;
+  }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--text);
+    margin-bottom: 14px;
+  }
+
+  h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.01em;
+    margin-bottom: 10px;
+  }
+
+  p {
+    font-size: 14.5px;
+    color: var(--text-sec);
+    line-height: 1.72;
+    margin-bottom: 14px;
+  }
+
+  /* ── Request block ── */
+  .request-block {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-left: 3px solid rgba(255,255,255,0.18);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin-bottom: 28px;
+  }
+
+  .request-block p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    margin: 0;
+    line-height: 1.65;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 24px;
+    margin-bottom: 16px;
+  }
+
+  .card-accent-green {
+    border-top: 2px solid var(--green-dim);
+  }
+
+  .card-accent-amber {
+    border-top: 2px solid #c8913a;
+  }
+
+  /* ── File chips ── */
+  .file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text-sec);
+    margin: 3px 4px 3px 0;
+    white-space: nowrap;
+  }
+
+  /* ── Code block ── */
+  pre {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    margin-bottom: 16px;
+  }
+
+  code {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: rgba(255,255,255,0.82);
+    line-height: 1.7;
+  }
+
+  pre code {
+    color: inherit;
+  }
+
+  .sql-keyword { color: #79b8ff; }
+  .sql-table   { color: var(--green); }
+  .sql-type    { color: #f97583; }
+
+  /* ── Feature list ── */
+  .feature-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+    margin-bottom: 16px;
+  }
+
+  .feature-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--text-sec);
+    line-height: 1.55;
+  }
+
+  .feature-list li::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green-dim);
+    margin-top: 6px;
+    flex-shrink: 0;
+  }
+
+  .feature-list li strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* ── Change rows ── */
+  .change-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .change-row:last-child {
+    border-bottom: none;
+  }
+
+  .change-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .change-icon.mod { background: rgba(52,212,117,0.1); }
+  .change-icon.sql { background: rgba(121,184,255,0.1); }
+
+  .change-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .change-label.mod { color: var(--green); }
+  .change-label.sql { color: #79b8ff; }
+
+  .change-desc {
+    font-size: 13.5px;
+    color: var(--text-sec);
+    line-height: 1.6;
+  }
+
+  /* ── Pill tags ── */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 100px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .pill-green {
+    background: rgba(52,212,117,0.10);
+    border: 1px solid rgba(52,212,117,0.22);
+    color: var(--green);
+  }
+
+  .pill-red {
+    background: rgba(239,68,68,0.10);
+    border: 1px solid rgba(239,68,68,0.22);
+    color: #f87171;
+  }
+
+  .pill-amber {
+    background: rgba(249,115,22,0.10);
+    border: 1px solid rgba(249,115,22,0.20);
+    color: #fb923c;
+  }
+
+  /* ── Decision callout ── */
+  .callout {
+    background: rgba(52,212,117,0.04);
+    border: 1px solid rgba(52,212,117,0.14);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+
+  .callout-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--green);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 7px;
+  }
+
+  .callout p {
+    font-size: 13.5px;
+    color: var(--text-sec);
+    margin: 0;
+    line-height: 1.65;
+  }
+
+  /* ── Divider ── */
+  hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent);
+    margin: 40px 0;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 60px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .footer p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .logo-mark {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-sec);
+    letter-spacing: -0.02em;
+  }
+
+  /* ── Inline code ── */
+  .ic {
+    font-family: 'DM Mono', monospace;
+    font-size: 12.5px;
+    color: rgba(255,255,255,0.78);
+    background: rgba(255,255,255,0.07);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+
+  /* ── Flow diagram ── */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .flow-step {
+    flex: 1;
+    min-width: 140px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 14px 16px;
+    position: relative;
+  }
+
+  .flow-step + .flow-step {
+    margin-left: 8px;
+  }
+
+  .flow-num {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--green);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  .flow-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .flow-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="session-header">
+    <div class="session-tag">Session Log</div>
+    <h1>Trash / Recycle Bin Feature</h1>
+    <p style="color: var(--text-sec); font-size: 15px; margin-bottom: 0;">
+      A complete record of what was built, how, and why — for the session starting with "Add a Trash/Recycle Bin feature to the trips dashboard."
+    </p>
+    <div class="session-meta">
+      <div class="meta-item">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" style="width:12px;height:12px;opacity:.5">
+          <rect x="1.5" y="2.5" width="11" height="10" rx="2"/>
+          <path d="M4 1v3M10 1v3M1.5 6h11"/>
+        </svg>
+        <span>May 27, 2026</span>
+      </div>
+      <div class="meta-item">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" style="width:12px;height:12px;opacity:.5">
+          <circle cx="7" cy="7" r="5.5"/>
+          <path d="M7 4v3l2 1.5"/>
+        </svg>
+        <span>Single session</span>
+      </div>
+      <div class="meta-item">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" style="width:12px;height:12px;opacity:.5">
+          <path d="M2 4h10M2 8h7M2 12h4"/>
+        </svg>
+        <span>2 files changed</span>
+      </div>
+      <div class="meta-item">
+        Project: <span>Easy Trip</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- The ask -->
+  <div class="section">
+    <div class="section-label">The Request</div>
+    <h2>What You Asked For</h2>
+    <div class="request-block">
+      <p>
+        "Add a Trash/Recycle Bin feature to the trips dashboard. Part 1 — run an ALTER TABLE to add a <code>deleted_at</code> column for soft deletes. Part 2 — update the trips page: change delete to soft-delete, add a trash bin icon button with a badge count, build a slide-in trash panel with restore support, auto-purge trips older than 7 days on page load, and show a toast on restore."
+      </p>
+    </div>
+    <p>
+      This was a complete feature addition — no existing code was removed, only extended. The core idea is <strong>soft-delete</strong>: instead of permanently erasing a trip row, we stamp it with a timestamp and filter it out of normal views, giving the user a 7-day recovery window.
+    </p>
+  </div>
+
+  <hr />
+
+  <!-- What was changed -->
+  <div class="section">
+    <div class="section-label">Files Changed</div>
+    <h2>What Was Modified</h2>
+
+    <div class="card card-accent-amber">
+      <div class="change-row">
+        <div class="change-icon sql">
+          <svg viewBox="0 0 16 16" fill="none" stroke="#79b8ff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style="width:14px;height:14px">
+            <path d="M8 2C4.5 2 2 3.34 2 5s2.5 3 6 3 6-1.34 6-3-2.5-3-6-3z"/>
+            <path d="M2 5v3c0 1.66 2.5 3 6 3s6-1.34 6-3V5"/>
+            <path d="M2 8v3c0 1.66 2.5 3 6 3s6-1.34 6-3V8"/>
+          </svg>
+        </div>
+        <div>
+          <div class="change-label sql">Supabase SQL — Manual Step Required</div>
+          <div class="change-desc">
+            The CLI wasn't installed and there was no service-role key available to run DDL remotely. You need to paste this into <strong>Supabase Dashboard → SQL Editor</strong>:
+          </div>
+          <pre style="margin-top:12px"><code><span class="sql-keyword">ALTER TABLE</span> <span class="sql-table">trips</span> <span class="sql-keyword">ADD COLUMN</span> deleted_at <span class="sql-type">timestamp with time zone</span> <span class="sql-keyword">DEFAULT NULL</span>;</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-accent-green" style="margin-top:0">
+      <div class="change-row">
+        <div class="change-icon mod">
+          <svg viewBox="0 0 16 16" fill="none" stroke="var(--green)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style="width:14px;height:14px">
+            <path d="M2 12.5V14h1.5l8.5-8.5-1.5-1.5L2 12.5z"/>
+            <path d="M11.5 2.5l2 2"/>
+          </svg>
+        </div>
+        <div style="flex:1">
+          <div class="change-label mod">Modified</div>
+          <span class="file-chip">lib/types.ts</span>
+          <div class="change-desc" style="margin-top:8px">
+            Added <span class="ic">deleted_at?: string | null</span> to the <span class="ic">Trip</span> type so TypeScript knows about the new column across the whole codebase.
+          </div>
+        </div>
+      </div>
+
+      <div class="change-row">
+        <div class="change-icon mod">
+          <svg viewBox="0 0 16 16" fill="none" stroke="var(--green)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style="width:14px;height:14px">
+            <path d="M2 12.5V14h1.5l8.5-8.5-1.5-1.5L2 12.5z"/>
+            <path d="M11.5 2.5l2 2"/>
+          </svg>
+        </div>
+        <div style="flex:1">
+          <div class="change-label mod">Full Rewrite</div>
+          <span class="file-chip">app/trips/page.tsx</span>
+          <div class="change-desc" style="margin-top:8px">
+            The trips dashboard page was rewritten to include all the new functionality described below. The existing design language, color tokens, animation style, and component structure were preserved — only extended.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr />
+
+  <!-- Feature breakdown -->
+  <div class="section">
+    <div class="section-label">Feature Breakdown</div>
+    <h2>Everything That Was Built</h2>
+
+    <!-- Soft delete -->
+    <div class="card" style="margin-bottom:14px">
+      <h3>1 · Soft Delete (changed behavior)</h3>
+      <p>
+        The "Delete" button on trip cards no longer issues a <span class="ic">DELETE</span> SQL statement. Instead it does:
+      </p>
+      <pre><code>UPDATE trips SET deleted_at = now()
+WHERE id = [tripId] AND user_id = [userId]</code></pre>
+      <p style="margin:0">
+        The card fades out and disappears from the grid just like before — the user experience is identical — but the row still exists in the database and can be recovered. The confirmation dialog text was updated from "Delete this trip?" to <strong>"Move to trash?"</strong> and the confirm button now reads <strong>"Move to Trash"</strong> to make the reversibility obvious.
+      </p>
+    </div>
+
+    <!-- Active trips filter -->
+    <div class="card" style="margin-bottom:14px">
+      <h3>2 · Active Trips Filter</h3>
+      <p>
+        The Supabase query that loads your trips now includes <span class="ic">.is('deleted_at', null)</span> so soft-deleted trips never appear in the grid:
+      </p>
+      <pre><code>SELECT * FROM trips
+WHERE user_id = [userId]
+  AND deleted_at IS NULL
+ORDER BY created_at DESC</code></pre>
+    </div>
+
+    <!-- Auto-cleanup -->
+    <div class="card" style="margin-bottom:14px">
+      <h3>3 · Auto-Cleanup on Page Load</h3>
+      <p>
+        Every time the trips page loads, before fetching anything, it silently runs a cleanup that permanently hard-deletes any trip in the trash that's older than 7 days:
+      </p>
+      <pre><code>DELETE FROM trips
+WHERE user_id = [userId]
+  AND deleted_at IS NOT NULL
+  AND deleted_at &lt; now() - interval '7 days'</code></pre>
+      <p style="margin:0">The cutoff is computed in JS (<span class="ic">new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()</span>) and passed to Supabase's <span class="ic">.lt()</span> filter. This happens silently — no loading state, no UI change.</p>
+    </div>
+
+    <!-- Trash icon button -->
+    <div class="card" style="margin-bottom:14px">
+      <h3>4 · Trash Icon Button + Badge</h3>
+      <p>
+        A dark gray icon button sits next to the "+ Plan a New Trip" button in the page header. It holds a trash SVG icon and, when there are items in the trash, shows a <span class="pill pill-red" style="vertical-align:middle">red badge</span> with the count. Badge is hidden when count is 0. Count is fetched during the initial page load and updated locally on delete/restore without a full reload.
+      </p>
+    </div>
+
+    <!-- Trash panel -->
+    <div class="card" style="margin-bottom:14px">
+      <h3>5 · Trash Panel (slide-in drawer)</h3>
+      <p>
+        Clicking the trash icon opens a panel that slides in from the right with a blurred backdrop overlay. It's a fixed-position drawer, 420px wide, with its own scroll area.
+      </p>
+
+      <div class="flow" style="margin:16px 0">
+        <div class="flow-step">
+          <div class="flow-num">Header</div>
+          <div class="flow-title">Title + close</div>
+          <div class="flow-desc">"Trash" heading, X button, subtitle about 7-day expiry</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">Items</div>
+          <div class="flow-title">Trip list</div>
+          <div class="flow-desc">Destination, date range, two status pills, Restore button</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">States</div>
+          <div class="flow-title">Edge cases</div>
+          <div class="flow-desc">Loading skeleton + empty state when trash is clear</div>
+        </div>
+      </div>
+
+      <p>Each trashed trip shows:</p>
+      <ul class="feature-list">
+        <li><strong>Destination name</strong></li>
+        <li><strong>Date range</strong> — same format as the main grid</li>
+        <li><strong>"Deleted X days ago"</strong> pill — shows "today", "1 day ago", or "X days ago"</li>
+        <li>
+          <strong>"Expires in X days"</strong> pill — color-coded urgency:
+          <span class="pill pill-green" style="margin-left:6px;vertical-align:middle">5–7 days: gray</span>
+          <span class="pill pill-amber" style="margin-left:4px;vertical-align:middle">≤ 3 days: amber</span>
+          <span class="pill pill-red" style="margin-left:4px;vertical-align:middle">≤ 1 day: red</span>
+        </li>
+        <li><strong>Restore button</strong> (green) — no "View Trip" link; trashed trips are not accessible</li>
+      </ul>
+
+      <p style="margin:0">Trash items are fetched lazily — only when the panel is opened. They reload fresh each time the panel opens so counts and expiry times stay accurate.</p>
+    </div>
+
+    <!-- Restore -->
+    <div class="card" style="margin-bottom:14px">
+      <h3>6 · Restore</h3>
+      <p>
+        Clicking Restore on a trash item runs:
+      </p>
+      <pre><code>UPDATE trips SET deleted_at = NULL
+WHERE id = [tripId] AND user_id = [userId]</code></pre>
+      <ul class="feature-list" style="margin-bottom:0">
+        <li>Item is immediately removed from the trash list (no reload)</li>
+        <li>Trip reappears at the top of the main active grid</li>
+        <li>Badge count decrements by 1</li>
+        <li>A green toast notification slides up: <strong>"Trip restored!"</strong></li>
+      </ul>
+    </div>
+
+    <!-- Toast -->
+    <div class="card" style="margin-bottom:0">
+      <h3>7 · Toast Notification</h3>
+      <p style="margin:0">
+        A fixed-position pill at the bottom center of the screen. It fades + slides up on show, fades out after 2.8 seconds. Uses a spring-easing animation (<span class="ic">cubic-bezier(0.34, 1.56, 0.64, 1)</span>) for the slide. Styled green to match the restore action.
+      </p>
+    </div>
+  </div>
+
+  <hr />
+
+  <!-- Key decisions -->
+  <div class="section">
+    <div class="section-label">Decisions Made</div>
+    <h2>Key Design Choices</h2>
+
+    <div class="callout">
+      <div class="callout-title">Why soft-delete instead of a separate archive table?</div>
+      <p>A single nullable column on the existing <span class="ic">trips</span> table is the simplest approach that doesn't require joins or schema migrations beyond one ALTER. It also means all existing queries only need a single filter clause added — nothing else in the codebase needed touching.</p>
+    </div>
+
+    <div class="callout">
+      <div class="callout-title">Why fetch trash lazily (on panel open) instead of on page load?</div>
+      <p>Trash is an infrequently accessed feature. Loading it eagerly on every page view would add a query that most users will never see. Opening the panel triggers the fetch, and it refreshes each time — so counts and expiry times are always fresh.</p>
+    </div>
+
+    <div class="callout">
+      <div class="callout-title">Why update badge count locally instead of re-querying?</div>
+      <p>After a soft-delete or restore, incrementing/decrementing a local counter is instantaneous and doesn't require a round-trip. The count is only ever off by one if the Supabase write fails (which is handled — the UI only updates <span class="ic">if (!err)</span>).</p>
+    </div>
+
+    <div class="callout">
+      <div class="callout-title">Why run auto-cleanup on page load instead of a Supabase cron job?</div>
+      <p>The request specified client-side cleanup. It runs silently before the trips query, so the user never sees expired trash items. A Supabase edge function or pg_cron job would be more robust at scale, but for this app the page-load approach is reliable enough — every session that touches the trips page will clean up its own stale data.</p>
+    </div>
+  </div>
+
+  <hr />
+
+  <!-- Summary -->
+  <div class="section">
+    <div class="section-label">Summary</div>
+    <h2>Net Result</h2>
+    <ul class="feature-list" style="margin-bottom:0">
+      <li>Deleting a trip is now <strong>reversible for 7 days</strong></li>
+      <li>Active trips grid is unaffected — deleted trips are filtered at the query level</li>
+      <li>Trash panel is accessible from the page header via a badged icon button</li>
+      <li>Expired trash is automatically purged on every page visit</li>
+      <li>TypeScript is fully typed — no <span class="ic">any</span> casts added</li>
+      <li>Zero new dependencies — built entirely with existing Supabase client + inline styles</li>
+      <li>The one manual step is the SQL migration (no CLI available in this environment)</li>
+    </ul>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 30" fill="none" style="width:18px;height:22px">
+        <defs>
+          <linearGradient id="pin" x1="3" y1="1" x2="21" y2="29" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#34d475"/>
+            <stop offset="100%" stop-color="#0d6b35"/>
+          </linearGradient>
+        </defs>
+        <path d="M12 1C7.03 1 3 5.03 3 10c0 4.42 3.2 8.22 7.2 13.1L12 29l1.8-5.9C17.8 18.22 21 14.42 21 10c0-4.97-4.03-9-9-9z" fill="url(#pin)"/>
+        <circle cx="12" cy="10" r="5.5" fill="white" opacity="0.97"/>
+        <line x1="12" y1="10" x2="9.6" y2="8.6" stroke="#0d6b35" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="12" y1="10" x2="15.3" y2="8.1" stroke="#0d6b35" stroke-width="1" stroke-linecap="round"/>
+        <circle cx="12" cy="10" r="0.9" fill="#0d6b35"/>
+      </svg>
+      Easy Trip
+    </div>
+    <p>Session log — generated May 27, 2026</p>
+  </div>
+
+</div>
+</body>
+</html>
