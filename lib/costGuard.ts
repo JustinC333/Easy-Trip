@@ -1,3 +1,7 @@
+// NOTE: checkAndReserve is not atomic — race conditions possible
+// under high concurrency. For production, use a database transaction
+// or atomic increment. Acceptable for MVP usage levels.
+
 import { createClient } from '@/lib/supabase/server'
 
 function getCurrentMonth(): string {
