@@ -152,10 +152,51 @@ function ErrorState({ message }: { message: string | null }) {
 }
 
 /* ─── Itinerary view ─── */
-function ItineraryView({ trip, onLogout }: { trip: Trip; onLogout: () => void }) {
+function ItineraryView({ trip, onLogout, userEmail }: { trip: Trip; onLogout: () => void; userEmail: string }) {
   const itin = trip.itinerary_json
   const days = calcDays(trip.start_date, trip.end_date)
-  const [shareTooltip, setShareTooltip] = useState(false)
+  const [isPublic, setIsPublic] = useState(trip.is_public ?? false)
+  const [shareLoading, setShareLoading] = useState(false)
+  const [toastMsg, setToastMsg] = useState('')
+  const [toastVisible, setToastVisible] = useState(false)
+
+  function showToast(msg: string) {
+    setToastMsg(msg)
+    setToastVisible(true)
+    setTimeout(() => setToastVisible(false), 4500)
+  }
+
+  async function handleShare() {
+    setShareLoading(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from('trips').update({ is_public: true }).eq('id', trip.id)
+      if (error) throw error
+      setIsPublic(true)
+      const shareUrl = window.location.origin + '/trips/' + trip.id + '/share'
+      await navigator.clipboard.writeText(shareUrl)
+      showToast('Link copied to clipboard! Anyone with this link can view your trip.')
+    } catch {
+      showToast('Failed to share trip. Please try again.')
+    } finally {
+      setShareLoading(false)
+    }
+  }
+
+  async function handleUnshare() {
+    setShareLoading(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from('trips').update({ is_public: false }).eq('id', trip.id)
+      if (error) throw error
+      setIsPublic(false)
+      showToast('Trip is now private.')
+    } catch {
+      showToast('Failed to update trip. Please try again.')
+    } finally {
+      setShareLoading(false)
+    }
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif", color: 'white' }}>
@@ -181,34 +222,66 @@ function ItineraryView({ trip, onLogout }: { trip: Trip; onLogout: () => void })
         backdropFilter: 'blur(18px) saturate(1.4)',
         borderBottom: '1px solid rgba(255,255,255,0.055)',
       }}>
-        <div style={{ maxWidth: 1140, margin: '0 auto', padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        <div style={{ maxWidth: 1140, margin: '0 auto', padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          {/* Left: Logo */}
+          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
             <LogoIcon size={30} />
             <span className="et-display" style={{ fontWeight: 700, fontSize: 20, color: 'white', letterSpacing: '-0.02em' }}>Easy Trip</span>
           </a>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+
+          {/* Center: Nav links */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <a
+              href="/plan"
+              style={{
+                fontSize: 13, fontWeight: 500, textDecoration: 'none',
+                color: C.textMuted,
+                padding: '7px 14px', borderRadius: 7,
+                border: '1px solid transparent',
+                transition: 'color 0.2s ease, background 0.2s ease',
+              }}
+              onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { color: C.textSecondary, background: 'rgba(255,255,255,0.05)' })}
+              onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { color: C.textMuted, background: 'transparent' })}
+            >
+              Plan a Trip
+            </a>
             <a
               href="/trips"
-              style={{ fontSize: 13, color: C.textMuted, textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s ease' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = C.textSecondary }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = C.textMuted }}
+              style={{
+                fontSize: 13, fontWeight: 600, textDecoration: 'none',
+                color: C.greenBright,
+                padding: '7px 14px', borderRadius: 7,
+                background: 'rgba(52,212,117,0.08)',
+                border: '1px solid rgba(52,212,117,0.18)',
+                transition: 'background 0.2s ease, border-color 0.2s ease',
+              }}
+              onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { background: 'rgba(52,212,117,0.14)', borderColor: 'rgba(52,212,117,0.32)' })}
+              onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { background: 'rgba(52,212,117,0.08)', borderColor: 'rgba(52,212,117,0.18)' })}
             >
               My Trips
             </a>
+          </div>
+
+          {/* Right: Email + Logout */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            {userEmail && (
+              <span style={{ fontSize: 12, color: C.textMuted, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {userEmail}
+              </span>
+            )}
             <button
               onClick={onLogout}
               style={{
                 background: 'transparent',
                 border: '1px solid rgba(255,255,255,0.10)',
-                borderRadius: 7, padding: '7px 15px',
+                borderRadius: 7, padding: '8px 15px',
                 fontSize: 13, fontWeight: 500,
-                color: 'rgba(255,255,255,0.38)',
-                cursor: 'pointer',
+                color: C.textMuted, cursor: 'pointer',
                 fontFamily: "'DM Sans', system-ui, sans-serif",
                 transition: 'color 0.2s ease, border-color 0.2s ease',
               }}
               onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { color: 'rgba(255,255,255,0.75)', borderColor: 'rgba(255,255,255,0.22)' })}
-              onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { color: 'rgba(255,255,255,0.38)', borderColor: 'rgba(255,255,255,0.10)' })}
+              onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { color: C.textMuted, borderColor: 'rgba(255,255,255,0.10)' })}
             >
               Log Out
             </button>
@@ -509,39 +582,59 @@ function ItineraryView({ trip, onLogout }: { trip: Trip; onLogout: () => void })
             </svg>
           </a>
 
-          {/* Share — coming soon */}
-          <div
-            style={{ position: 'relative' }}
-            onMouseEnter={() => setShareTooltip(true)}
-            onMouseLeave={() => setShareTooltip(false)}
-          >
-            {shareTooltip && (
+          {/* ── SHARE / UNSHARE ── */}
+          {isPublic ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <div style={{
-                position: 'absolute', bottom: 'calc(100% + 9px)', left: '50%', transform: 'translateX(-50%)',
-                background: '#0c1828', border: `1px solid ${C.border}`,
-                borderRadius: 8, padding: '7px 12px',
-                fontSize: 12, color: C.textSecondary,
-                whiteSpace: 'nowrap', pointerEvents: 'none',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.55)', zIndex: 20,
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: 'rgba(52,212,117,0.09)',
+                border: '1px solid rgba(52,212,117,0.25)',
+                borderRadius: 10, padding: '12px 20px',
+                fontSize: 14, fontWeight: 600, color: C.greenBright,
               }}>
-                Sharing coming soon
-                <div style={{
-                  position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
-                  width: 0, height: 0,
-                  borderLeft: '5px solid transparent', borderRight: '5px solid transparent',
-                  borderTop: `5px solid ${C.border}`,
-                }} />
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+                  <path d="M2 8l4 4L14 4" />
+                </svg>
+                Shared ✓
               </div>
-            )}
-            <button style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: 'rgba(255,255,255,0.04)',
-              border: `1px solid ${C.border}`,
-              borderRadius: 10, padding: '12px 20px',
-              fontSize: 14, fontWeight: 500,
-              color: C.textMuted, cursor: 'not-allowed',
-              fontFamily: "'DM Sans', system-ui, sans-serif",
-            }}>
+              <button
+                onClick={handleUnshare}
+                disabled={shareLoading}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: 'transparent',
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 10, padding: '12px 20px',
+                  fontSize: 14, fontWeight: 500,
+                  color: C.textMuted, cursor: shareLoading ? 'not-allowed' : 'pointer',
+                  fontFamily: "'DM Sans', system-ui, sans-serif",
+                  opacity: shareLoading ? 0.5 : 1,
+                  transition: 'color 0.2s ease, border-color 0.2s ease',
+                }}
+                onMouseEnter={e => !shareLoading && Object.assign((e.currentTarget as HTMLElement).style, { color: '#ef4444', borderColor: 'rgba(239,68,68,0.35)' })}
+                onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { color: C.textMuted, borderColor: C.border })}
+              >
+                Unshare
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleShare}
+              disabled={shareLoading}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: 'rgba(255,255,255,0.04)',
+                border: `1px solid ${C.border}`,
+                borderRadius: 10, padding: '12px 20px',
+                fontSize: 14, fontWeight: 500,
+                color: shareLoading ? C.textMuted : C.textSecondary,
+                cursor: shareLoading ? 'not-allowed' : 'pointer',
+                fontFamily: "'DM Sans', system-ui, sans-serif",
+                transition: 'color 0.2s ease, border-color 0.2s ease, background 0.2s ease',
+              }}
+              onMouseEnter={e => !shareLoading && Object.assign((e.currentTarget as HTMLElement).style, { color: C.textPrimary, borderColor: 'rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.06)' })}
+              onMouseLeave={e => !shareLoading && Object.assign((e.currentTarget as HTMLElement).style, { color: C.textSecondary, borderColor: C.border, background: 'rgba(255,255,255,0.04)' })}
+            >
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
                 <circle cx="12" cy="3" r="1.8" />
                 <circle cx="4" cy="8" r="1.8" />
@@ -549,11 +642,35 @@ function ItineraryView({ trip, onLogout }: { trip: Trip; onLogout: () => void })
                 <line x1="5.7" y1="9" x2="10.3" y2="12" />
                 <line x1="10.3" y1="4" x2="5.7" y2="7" />
               </svg>
-              Share Trip
+              {shareLoading ? 'Sharing…' : 'Share Trip 🔗'}
             </button>
-          </div>
+          )}
         </div>
       </div>
+
+      {/* ── TOAST ── */}
+      {toastVisible && (
+        <div style={{
+          position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(5,15,10,0.96)',
+          border: '1px solid rgba(52,212,117,0.28)',
+          borderRadius: 12, padding: '13px 20px',
+          fontSize: 14, color: C.textSecondary,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(52,212,117,0.06)',
+          zIndex: 100,
+          maxWidth: 440, textAlign: 'center',
+          animation: 'trip-fadein 0.25s ease-out both',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center' }}>
+            <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(52,212,117,0.14)', border: '1px solid rgba(52,212,117,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg viewBox="0 0 12 12" fill="none" stroke={C.greenBright} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 7, height: 7 }}>
+                <path d="M2 6l2.5 2.5L10 3" />
+              </svg>
+            </div>
+            {toastMsg}
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes trip-fadein {
@@ -574,6 +691,7 @@ export default function TripPage() {
   const [trip, setTrip] = useState<Trip | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [userEmail, setUserEmail] = useState('')
 
   async function handleLogout() {
     const supabase = createClient()
@@ -589,6 +707,7 @@ export default function TripPage() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { router.replace('/auth'); return }
+        setUserEmail(user.email ?? '')
 
         const { data, error: fetchErr } = await supabase
           .from('trips')
@@ -618,5 +737,5 @@ export default function TripPage() {
 
   if (loading) return <SkeletonLoader />
   if (error || !trip) return <ErrorState message={error} />
-  return <ItineraryView trip={trip} onLogout={handleLogout} />
+  return <ItineraryView trip={trip} onLogout={handleLogout} userEmail={userEmail} />
 }

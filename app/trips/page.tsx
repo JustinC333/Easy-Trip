@@ -904,37 +904,52 @@ export default function TripsPage() {
         borderBottom: '1px solid rgba(255,255,255,0.055)',
       }}>
         <div style={{ maxWidth: 1140, margin: '0 auto', padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          {/* Left: Logo */}
           <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
             <LogoIcon size={30} />
             <span style={{ fontWeight: 700, fontSize: 20, color: 'white', letterSpacing: '-0.02em' }}>Easy Trip</span>
           </a>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            {userEmail && (
-              <span style={{ fontSize: 12, color: C.textMuted, marginRight: 4, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {userEmail}
-              </span>
-            )}
+          {/* Center: Nav links */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <a
               href="/plan"
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: 'linear-gradient(140deg, #1e8a52 0%, #0d5530 100%)',
-                border: '1px solid rgba(50,160,100,0.35)',
-                borderRadius: 8, padding: '8px 16px',
-                fontSize: 13, fontWeight: 600, color: 'white',
-                textDecoration: 'none',
-                boxShadow: '0 0 16px rgba(26,130,78,0.22)',
-                transition: 'box-shadow 0.2s ease, transform 0.15s ease',
+                fontSize: 13, fontWeight: 500, textDecoration: 'none',
+                color: C.textMuted,
+                padding: '7px 14px', borderRadius: 7,
+                border: '1px solid transparent',
+                transition: 'color 0.2s ease, background 0.2s ease',
               }}
-              onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { boxShadow: '0 0 26px rgba(26,130,78,0.42)', transform: 'translateY(-1px)' })}
-              onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { boxShadow: '0 0 16px rgba(26,130,78,0.22)', transform: 'translateY(0)' })}
+              onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { color: C.textSecondary, background: 'rgba(255,255,255,0.05)' })}
+              onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { color: C.textMuted, background: 'transparent' })}
             >
-              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ width: 11, height: 11 }}>
-                <path d="M7 2v10M2 7h10" />
-              </svg>
               Plan a Trip
             </a>
+            <a
+              href="/trips"
+              style={{
+                fontSize: 13, fontWeight: 600, textDecoration: 'none',
+                color: C.greenBright,
+                padding: '7px 14px', borderRadius: 7,
+                background: 'rgba(52,212,117,0.08)',
+                border: '1px solid rgba(52,212,117,0.18)',
+                transition: 'background 0.2s ease, border-color 0.2s ease',
+              }}
+              onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { background: 'rgba(52,212,117,0.14)', borderColor: 'rgba(52,212,117,0.32)' })}
+              onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { background: 'rgba(52,212,117,0.08)', borderColor: 'rgba(52,212,117,0.18)' })}
+            >
+              My Trips
+            </a>
+          </div>
+
+          {/* Right: Email + Logout */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            {userEmail && (
+              <span style={{ fontSize: 12, color: C.textMuted, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {userEmail}
+              </span>
+            )}
             <button
               onClick={handleLogout}
               style={{

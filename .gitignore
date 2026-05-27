@@ -47,3 +47,10 @@ screenshot.mjs
 serve.mjs
 
 # add after done submitting for CSE190
+
+# DESIGN.md
+#   git rm -r --cached DESIGN.md
+# transcripts/
+#   git rm -r --cached transcripts
+
+# make sure to git push after

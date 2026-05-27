@@ -7,6 +7,7 @@ export type Trip = {
   created_at: string
   itinerary_json: Itinerary
   deleted_at?: string | null
+  is_public?: boolean
 }
 
 export type Itinerary = {

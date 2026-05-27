@@ -491,9 +491,9 @@ function PlacesCombobox({
 /* ─── Step progress ─── */
 function ProgressBar({ step }: { step: number }) {
   return (
-    <div className="w-full mb-10">
+    <div className="w-full mb-4">
       {/* Step labels */}
-      <div className="flex justify-between mb-3.5 gap-2">
+      <div className="flex justify-between mb-2 gap-2">
         {STEPS.map((label, i) => (
           <div key={i} className="flex-1 text-center">
             <div className="flex flex-col items-center gap-1.5">
@@ -538,7 +538,7 @@ function ProgressBar({ step }: { step: number }) {
         />
       </div>
       {/* Current step label */}
-      <div className="text-center mt-3 text-[13px] font-medium tracking-[0.02em] text-[rgba(255,255,255,0.38)]">
+      <div className="text-center mt-2 text-[13px] font-medium tracking-[0.02em] text-[rgba(255,255,255,0.38)]">
         Step {step + 1} of {STEPS.length} — <span className="text-[#34d475]">{STEPS[step]}</span>
       </div>
     </div>
@@ -1688,6 +1688,65 @@ function Step4({ data, onChange, onSubmit, loading, submitError }: { data: FormD
   );
 }
 
+/* ─── Token Usage Banner ─── */
+function TokenUsageBanner({ usage }: { usage: { tokens_used: number; ceiling: number } | null }) {
+  if (!usage) return null;
+  const { tokens_used, ceiling } = usage;
+  const pct = Math.min((tokens_used / ceiling) * 100, 100);
+  const remaining = Math.max(ceiling - tokens_used, 0);
+  const estGenerations = Math.floor(remaining / 4000);
+
+  const barColor = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#34d475';
+  const barGlow = pct >= 90 ? '0 0 8px rgba(239,68,68,0.45)' : pct >= 70 ? '0 0 8px rgba(245,158,11,0.4)' : '0 0 8px rgba(52,212,117,0.35)';
+
+  return (
+    <div style={{
+      background: 'rgba(3,8,16,0.78)',
+      backdropFilter: 'blur(18px)',
+      border: `1px solid ${pct >= 90 ? 'rgba(239,68,68,0.22)' : C.border}`,
+      borderRadius: 12,
+      padding: '12px 16px',
+      marginBottom: 10,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: C.textMuted, textTransform: 'uppercase' }}>
+          AI Credits this month
+        </span>
+        <span style={{ fontSize: 11, color: C.textMuted }}>
+          {remaining.toLocaleString()} remaining
+        </span>
+      </div>
+
+      <div style={{ height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden', marginBottom: 7 }}>
+        <div style={{
+          height: '100%',
+          width: `${pct}%`,
+          background: barColor,
+          borderRadius: 2,
+          boxShadow: barGlow,
+          transition: 'width 0.6s cubic-bezier(0.34,1.56,0.64,1)',
+        }} />
+      </div>
+
+      <div style={{ fontSize: 11, color: C.textMuted }}>
+        {tokens_used.toLocaleString()} / 50,000 used
+      </div>
+
+      {pct >= 90 && (
+        <div style={{
+          marginTop: 8, padding: '8px 10px',
+          background: 'rgba(239,68,68,0.07)',
+          border: '1px solid rgba(239,68,68,0.2)',
+          borderRadius: 8, fontSize: 11,
+          color: 'rgba(248,113,113,0.9)', lineHeight: 1.55,
+        }}>
+          You're running low on AI credits for this month. You have {estGenerations} generation{estGenerations !== 1 ? 's' : ''} remaining (approx).
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════ */
 export default function PlanPageClient() {
   const router = useRouter();
@@ -1697,6 +1756,8 @@ export default function PlanPageClient() {
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const [userEmail, setUserEmail] = useState('');
+  const [usage, setUsage] = useState<{ tokens_used: number; ceiling: number } | null>(null);
   const [animDir, setAnimDir] = useState<'forward' | 'back'>('forward');
   const [visible, setVisible] = useState(true);
   const [showErrors, setShowErrors] = useState(false);
@@ -1712,7 +1773,7 @@ export default function PlanPageClient() {
     router.replace('/auth');
   }
 
-  // Restore from localStorage on mount
+  // Restore from localStorage on mount + fetch user email
   useEffect(() => {
     try {
       const saved = localStorage.getItem('easytrip-plan');
@@ -1724,7 +1785,20 @@ export default function PlanPageClient() {
     } catch (e) {
       console.error('Failed to restore progress:', e);
     }
-  }, []);
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user?.email) setUserEmail(user.email);
+      if (user?.id) {
+        const month = new Date().toISOString().slice(0, 7);
+        const { data } = await supabase
+          .from('usage_records')
+          .select('tokens_used, ceiling')
+          .eq('user_id', user.id)
+          .eq('month', month)
+          .single();
+        setUsage(data ? { tokens_used: data.tokens_used, ceiling: data.ceiling ?? 50000 } : { tokens_used: 0, ceiling: 50000 });
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save to localStorage on any state change (skip first render)
   useEffect(() => {
@@ -1945,29 +2019,67 @@ export default function PlanPageClient() {
         backdropFilter: 'blur(18px) saturate(1.4)',
         borderBottom: '1px solid rgba(255,255,255,0.055)',
       }}>
-        <div style={{ maxWidth: 1140, margin: '0 auto', padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        <div style={{ maxWidth: 1140, margin: '0 auto', padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          {/* Left: Logo */}
+          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
             <LogoIcon size={30} />
             <span className="et-display" style={{ fontWeight: 700, fontSize: 20, color: 'white', letterSpacing: '-0.02em' }}>Easy Trip</span>
           </a>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <div style={{ fontSize: 13, color: C.textMuted }}>
-              Step <span style={{ color: C.greenBright, fontWeight: 600 }}>{step + 1}</span> / {STEPS.length}
-            </div>
+
+          {/* Center: Nav links */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <a
+              href="/plan"
+              style={{
+                fontSize: 13, fontWeight: 600, textDecoration: 'none',
+                color: C.greenBright,
+                padding: '7px 14px', borderRadius: 7,
+                background: 'rgba(52,212,117,0.08)',
+                border: '1px solid rgba(52,212,117,0.18)',
+                transition: 'background 0.2s ease, border-color 0.2s ease',
+              }}
+              onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { background: 'rgba(52,212,117,0.14)', borderColor: 'rgba(52,212,117,0.32)' })}
+              onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { background: 'rgba(52,212,117,0.08)', borderColor: 'rgba(52,212,117,0.18)' })}
+            >
+              Plan a Trip
+            </a>
+            <a
+              href="/trips"
+              style={{
+                fontSize: 13, fontWeight: 500, textDecoration: 'none',
+                color: C.textMuted,
+                padding: '7px 14px', borderRadius: 7,
+                border: '1px solid transparent',
+                transition: 'color 0.2s ease, background 0.2s ease',
+              }}
+              onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { color: C.textSecondary, background: 'rgba(255,255,255,0.05)' })}
+              onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { color: C.textMuted, background: 'transparent' })}
+            >
+              My Trips
+            </a>
+          </div>
+
+          {/* Right: Email + Logout */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            {userEmail && (
+              <span style={{ fontSize: 12, color: C.textMuted, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {userEmail}
+              </span>
+            )}
             <button onClick={handleLogout} style={{
               background: 'transparent',
               border: '1px solid rgba(255,255,255,0.10)',
               borderRadius: 7,
-              padding: '7px 15px',
+              padding: '8px 15px',
               fontSize: 13,
               fontWeight: 500,
-              color: 'rgba(255,255,255,0.38)',
+              color: C.textMuted,
               cursor: 'pointer',
               fontFamily: "'DM Sans', system-ui, sans-serif",
               transition: 'color 0.2s ease, border-color 0.2s ease',
             }}
               onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { color: 'rgba(255,255,255,0.75)', borderColor: 'rgba(255,255,255,0.22)' })}
-              onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { color: 'rgba(255,255,255,0.38)', borderColor: 'rgba(255,255,255,0.10)' })}
+              onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { color: C.textMuted, borderColor: 'rgba(255,255,255,0.10)' })}
             >
               Log Out
             </button>
@@ -1988,11 +2100,12 @@ export default function PlanPageClient() {
         {/* Form column */}
         {/* HERE */}
         <div style={{ minWidth: 0 }}>
+          <TokenUsageBanner usage={usage} />
           <div style={{
             background: step <= 2 ? 'rgba(3,8,16,0.78)' : 'transparent',
             backdropFilter: step <= 2 ? 'blur(18px)' : 'none',
             borderRadius: step <= 2 ? 16 : 0,
-            padding: step <= 2 ? '16px 20px 10px' : '0',
+            padding: step <= 2 ? '12px 20px 6px' : '0',
             marginBottom: step <= 2 ? 8 : 0,
             transition: 'background 0.65s ease, padding 0.65s ease, margin 0.65s ease',
           }}>
