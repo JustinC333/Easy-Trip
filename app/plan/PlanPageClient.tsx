@@ -11,6 +11,14 @@ const STEPS = [
   'Must Haves',
 ];
 
+const LOADING_MESSAGES = [
+  'Analyzing your destinations...',
+  'Checking flights and hotels...',
+  'Building your day-by-day itinerary...',
+  'Adding local recommendations...',
+  'Almost ready...',
+];
+
 /* ─── Types ─── */
 interface Destination {
   state: string;
@@ -1564,7 +1572,7 @@ function Step3({ data, onChange }: { data: FormData; onChange: (u: Partial<FormD
 }
 
 /* ─── Step 4: Must-haves + Submit ─── */
-function Step4({ data, onChange, onSubmit, loading }: { data: FormData; onChange: (u: Partial<FormData>) => void; onSubmit: () => void; loading: boolean }) {
+function Step4({ data, onChange, onSubmit, loading, submitError }: { data: FormData; onChange: (u: Partial<FormData>) => void; onSubmit: () => void; loading: boolean; submitError?: string | null }) {
   const [focus, setFocus] = useState(false);
 
   return (
@@ -1659,6 +1667,21 @@ function Step4({ data, onChange, onSubmit, loading }: { data: FormData; onChange
           Please complete all destinations and dates in Step 1 to continue.
         </p>
       )}
+
+      {submitError && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          background: 'rgba(239,68,68,0.08)',
+          border: '1px solid rgba(239,68,68,0.3)',
+          borderRadius: 10, padding: '13px 16px',
+          fontSize: 13, color: 'rgba(239,68,68,0.9)', lineHeight: 1.5,
+        }}>
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ width: 14, height: 14, flexShrink: 0, marginTop: 1 }}>
+            <circle cx="7" cy="7" r="6" /><path d="M7 4v3M7 10v.5" />
+          </svg>
+          {submitError}
+        </div>
+      )}
     </div>
   );
 }
@@ -1670,6 +1693,8 @@ export default function PlanPageClient() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [animDir, setAnimDir] = useState<'forward' | 'back'>('forward');
   const [visible, setVisible] = useState(true);
   const [showErrors, setShowErrors] = useState(false);
@@ -1712,6 +1737,12 @@ export default function PlanPageClient() {
     }
   }, [step, form]);
 
+  useEffect(() => {
+    if (!loading) { setLoadingMsgIdx(0); return; }
+    const id = setInterval(() => setLoadingMsgIdx(i => (i + 1) % LOADING_MESSAGES.length), 3000);
+    return () => clearInterval(id);
+  }, [loading]);
+
   const handleRestart = () => {
     try { localStorage.removeItem('easytrip-plan'); } catch (e) {}
     setForm(EMPTY_FORM);
@@ -1733,12 +1764,58 @@ export default function PlanPageClient() {
   };
 
   const handleSubmit = async () => {
+    setSubmitError(null);
     setLoading(true);
-    // TODO: call AI itinerary API
-    await new Promise(r => setTimeout(r, 2200));
-    setLoading(false);
-    try { localStorage.removeItem('easytrip-plan'); } catch (e) {}
-    alert('Itinerary generation coming soon!');
+
+    const headCount =
+      form.groupSize === 'solo' ? 1
+      : form.groupSize === 'couple' ? 2
+      : form.groupCount > 0 ? form.groupCount
+      : form.groupSize === 'small' ? 3
+      : 6;
+
+    const requestBody = {
+      destinations: form.destinations,
+      startDate: form.startDate,
+      endDate: form.endDate,
+      groupSize: form.groupSize,
+      numberOfPeople: headCount,
+      travelStyles: form.travelStyles,
+      transportation: form.transportation,
+      accommodation: form.accommodation,
+      totalBudget: form.budget,
+      budgetPerPerson: form.budget >= 100000 ? 0 : Math.round(form.budget / headCount),
+      ...(form.flightBudget > 0 && { flightBudgetPerPerson: form.flightBudget }),
+      ...(form.accommodationBudget > 0 && { accommodationBudget: form.accommodationBudget }),
+      ...(form.mustHaves && { mustHaves: form.mustHaves }),
+    };
+
+    try {
+      const res = await fetch('/api/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          setSubmitError("You've reached your monthly AI limit. Please try again next month.");
+        } else if (res.status === 401) {
+          setSubmitError('Please sign in to generate a trip.');
+        } else {
+          setSubmitError('Something went wrong. Please try again.');
+        }
+        setLoading(false);
+        return;
+      }
+
+      const { tripId } = await res.json();
+      try { localStorage.removeItem('easytrip-plan'); } catch (e) {}
+      router.push(`/trips/${tripId}`);
+    } catch {
+      setSubmitError('Connection failed. Check your internet and try again.');
+      setLoading(false);
+    }
   };
 
   const today = new Date().toISOString().split('T')[0];
@@ -1870,7 +1947,7 @@ export default function PlanPageClient() {
             {step === 0 && <Step1 data={form} onChange={update} showErrors={showErrors} />}
             {step === 1 && <Step3 data={form} onChange={update} />}
             {step === 2 && <Step2 data={form} onChange={update} showErrors={showErrors} />}
-            {step === 3 && <Step4 data={form} onChange={update} onSubmit={handleSubmit} loading={loading} />}
+            {step === 3 && <Step4 data={form} onChange={update} onSubmit={handleSubmit} loading={loading} submitError={submitError} />}
           </div>
 
           {/* Nav buttons */}
@@ -1960,6 +2037,51 @@ export default function PlanPageClient() {
             <path d="M2 7l3.5 3.5L12 3" />
           </svg>
           Progress saved
+        </div>
+      )}
+
+      {/* Full-screen loading overlay */}
+      {loading && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 300,
+          background: 'rgba(3,8,16,0.9)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 28,
+        }}>
+          {/* Spinner */}
+          <div style={{ position: 'relative', width: 60, height: 60 }}>
+            <svg viewBox="0 0 60 60" fill="none" style={{ width: 60, height: 60, position: 'absolute', inset: 0 }}>
+              <circle cx="30" cy="30" r="26" stroke="rgba(52,212,117,0.12)" strokeWidth="3" />
+            </svg>
+            <svg viewBox="0 0 60 60" fill="none" style={{ width: 60, height: 60, position: 'absolute', inset: 0, animation: 'spin 0.9s linear infinite' }}>
+              <path d="M30 4a26 26 0 0 1 26 26" stroke="#34d475" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <LogoIcon size={22} />
+            </div>
+          </div>
+
+          {/* Rotating message */}
+          <div style={{
+            fontSize: 16, fontWeight: 600,
+            color: 'rgba(255,255,255,0.9)',
+            textAlign: 'center', maxWidth: 320,
+            letterSpacing: '-0.01em',
+          }}>
+            {LOADING_MESSAGES[loadingMsgIdx]}
+          </div>
+
+          {/* Sub-label */}
+          <div style={{
+            fontSize: 12, color: 'rgba(255,255,255,0.35)',
+            textAlign: 'center',
+          }}>
+            This may take 30–60 seconds
+          </div>
         </div>
       )}
 
