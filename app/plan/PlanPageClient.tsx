@@ -546,7 +546,7 @@ function ProgressBar({ step }: { step: number }) {
 }
 
 /* ─── Summary sidebar ─── */
-function Sidebar({ data, onRestart }: { data: FormData; onRestart: () => void }) {
+function Sidebar({ data, onRestart, step }: { data: FormData; onRestart: () => void; step: number }) {
   const [restartTooltip, setRestartTooltip] = useState(false);
   const days = daysBetween(data.startDate, data.endDate);
   const groupLabels: Record<string, string> = { solo: 'Just Me', couple: 'Couple', small: 'Small Group (3–5)', large: 'Large Group (6+)' };
@@ -559,10 +559,12 @@ function Sidebar({ data, onRestart }: { data: FormData; onRestart: () => void })
   return (
     <>
       <div style={{
-        background: 'rgba(255,255,255,0.03)',
+        background: step <= 2 ? 'rgba(3,8,16,0.80)' : 'rgba(255,255,255,0.03)',
+        backdropFilter: step <= 2 ? 'blur(18px)' : 'none',
         border: `1px solid ${C.border}`,
         borderRadius: 16,
         padding: '24px 20px',
+        transition: 'background 0.65s ease',
       }}>
         <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: C.textMuted, textTransform: 'uppercase', marginBottom: 18 }}>
           Your Trip So Far
@@ -1870,10 +1872,65 @@ export default function PlanPageClient() {
   return (
     <div suppressHydrationWarning style={{ minHeight: '100vh', background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif", color: 'white' }}>
 
-      {/* Background aurora */}
+      {/* Background */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-        <div className="aurora-a" style={{ position: 'absolute', top: '-10%', left: '20%', width: 700, height: 500, borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(26,130,78,0.18) 0%, transparent 70%)' }} />
-        <div className="aurora-b" style={{ position: 'absolute', bottom: '10%', right: '15%', width: 500, height: 400, borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(13,107,53,0.14) 0%, transparent 70%)' }} />
+        {/* USA map — step 0 only */}
+        <img
+          src="/features/USA map.jpg"
+          alt=""
+          style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            objectFit: 'cover', objectPosition: 'center',
+            opacity: step === 0 ? 1 : 0,
+            transition: 'opacity 0.65s ease',
+          }}
+        />
+        {/* Dark overlay over map */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to bottom, rgba(3,8,16,0.52) 0%, rgba(3,8,16,0.42) 50%, rgba(3,8,16,0.62) 100%)',
+          opacity: step === 0 ? 1 : 0,
+          transition: 'opacity 0.65s ease',
+        }} />
+        {/* Vibe image — step 1 only */}
+        <img
+          src="/features/vibepageimage.jpg"
+          alt=""
+          style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            objectFit: 'cover', objectPosition: 'center',
+            opacity: step === 1 ? 1 : 0,
+            transition: 'opacity 0.65s ease',
+          }}
+        />
+        {/* Dark overlay over vibe image */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to bottom, rgba(3,8,16,0.55) 0%, rgba(3,8,16,0.45) 50%, rgba(3,8,16,0.65) 100%)',
+          opacity: step === 1 ? 1 : 0,
+          transition: 'opacity 0.65s ease',
+        }} />
+        {/* Outdoor image — step 2 only (Budget & Group) */}
+        <img
+          src="/features/outdoor image.jpg"
+          alt=""
+          style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            objectFit: 'cover', objectPosition: 'center',
+            opacity: step === 2 ? 1 : 0,
+            transition: 'opacity 0.65s ease',
+          }}
+        />
+        {/* Dark overlay over outdoor image */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to bottom, rgba(3,8,16,0.58) 0%, rgba(3,8,16,0.48) 50%, rgba(3,8,16,0.68) 100%)',
+          opacity: step === 2 ? 1 : 0,
+          transition: 'opacity 0.65s ease',
+        }} />
+        {/* Aurora blobs — step 3 only */}
+        <div className="aurora-a" style={{ position: 'absolute', top: '-10%', left: '20%', width: 700, height: 500, borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(26,130,78,0.18) 0%, transparent 70%)', opacity: step > 2 ? 1 : 0, transition: 'opacity 0.65s ease' }} />
+        <div className="aurora-b" style={{ position: 'absolute', bottom: '10%', right: '15%', width: 500, height: 400, borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(13,107,53,0.14) 0%, transparent 70%)', opacity: step > 2 ? 1 : 0, transition: 'opacity 0.65s ease' }} />
         <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.03 }}>
           <filter id="grain-plan"><feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="3" stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /></filter>
           <rect width="100%" height="100%" filter="url(#grain-plan)" />
@@ -1927,22 +1984,31 @@ export default function PlanPageClient() {
         gridTemplateColumns: 'minmax(0,1fr)',
         gap: 32,
       }} className="plan-grid">
-
+        
         {/* Form column */}
+        {/* HERE */}
         <div style={{ minWidth: 0 }}>
-          <div>
+          <div style={{
+            background: step <= 2 ? 'rgba(3,8,16,0.78)' : 'transparent',
+            backdropFilter: step <= 2 ? 'blur(18px)' : 'none',
+            borderRadius: step <= 2 ? 16 : 0,
+            padding: step <= 2 ? '16px 20px 10px' : '0',
+            marginBottom: step <= 2 ? 8 : 0,
+            transition: 'background 0.65s ease, padding 0.65s ease, margin 0.65s ease',
+          }}>
             <ProgressBar step={step} />
           </div>
 
           {/* Step panel */}
           <div style={{
-            background: 'rgba(255,255,255,0.03)',
+            background: step <= 2 ? 'rgba(3,8,16,0.74)' : 'rgba(255,255,255,0.03)',
+            backdropFilter: step <= 2 ? 'blur(18px) saturate(1.2)' : 'none',
             border: `1px solid ${C.border}`,
             borderRadius: 20,
             padding: 'clamp(24px,4vw,40px)',
             opacity: visible ? 1 : 0,
             transform: visible ? 'translateY(0)' : animDir === 'forward' ? 'translateY(14px)' : 'translateY(-14px)',
-            transition: 'opacity 0.22s ease, transform 0.22s ease',
+            transition: 'opacity 0.22s ease, transform 0.22s ease, background 0.65s ease, backdrop-filter 0.65s ease',
           }}>
             {step === 0 && <Step1 data={form} onChange={update} showErrors={showErrors} />}
             {step === 1 && <Step3 data={form} onChange={update} />}
@@ -2015,7 +2081,8 @@ export default function PlanPageClient() {
         {/* Sidebar — rendered below form on mobile, right column on desktop */}
         <div className="plan-sidebar">
           <div style={{ position: 'sticky', top: 90 }}>
-            <Sidebar data={form} onRestart={() => setShowRestartDialog(true)} />
+            {/* HERE */}
+            <Sidebar data={form} onRestart={() => setShowRestartDialog(true)} step={step} />
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ export type Trip = {
   end_date: string
   created_at: string
   itinerary_json: Itinerary
+  deleted_at?: string | null
 }
 
 export type Itinerary = {

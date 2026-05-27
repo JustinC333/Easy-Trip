@@ -198,7 +198,7 @@ export default function HomePage() {
                 Log Out
               </button>
             )}
-            <a href={authed ? '/plan' : '/auth'}
+            <a href={authed ? '/trips' : '/auth'}
               style={{
                 background: 'linear-gradient(135deg, #1e6b42 0%, #0e4428 100%)',
                 border: '1px solid rgba(46,140,88,0.38)',
@@ -260,7 +260,7 @@ export default function HomePage() {
                 Log Out
               </button>
             )}
-            <a href={authed ? '/plan' : '/auth'} style={{
+            <a href={authed ? '/trips' : '/auth'} style={{
               background: 'linear-gradient(135deg, #1e6b42 0%, #0e4428 100%)',
               border: 'none', borderRadius: 8, padding: '13px', fontSize: 15,
               fontWeight: 600, color: '#ede8df', textDecoration: 'none',
