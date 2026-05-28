@@ -202,3 +202,9 @@ The app is deployed on Vercel. To deploy your own instance:
 - AI generation takes 30–60 seconds per trip
 - CostGuard token checking is not atomic — race conditions possible under very high concurrency (acceptable at current usage scale)
 - Flight data integration is planned but not yet implemented
+
+## Demo Video
+[Link to YouTube Demo](https://youtu.be/XqVf0PjyMLg)
+
+## Transcripts
+See the `transcripts/` folder for 3 representative interaction logs.
