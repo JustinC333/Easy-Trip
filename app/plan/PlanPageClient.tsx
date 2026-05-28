@@ -2260,7 +2260,7 @@ export default function PlanPageClient() {
             fontSize: 12, color: 'rgba(255,255,255,0.35)',
             textAlign: 'center',
           }}>
-            This may take 30–60 seconds
+            This may take 60–90 seconds
           </div>
         </div>
       )}
