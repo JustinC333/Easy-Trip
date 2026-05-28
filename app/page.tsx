@@ -477,7 +477,7 @@ export default function HomePage() {
       <section id="how-it-works" style={{
         position: 'relative', zIndex: 10,
         padding: '120px 24px 140px',
-        backgroundImage: 'url(/HowItWorks/pic1.jpg)',
+        backgroundImage: 'url(/features/pic1.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         overflow: 'hidden',
