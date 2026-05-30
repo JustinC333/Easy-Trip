@@ -1794,7 +1794,7 @@ export default function PlanPageClient() {
           .select('tokens_used, ceiling')
           .eq('user_id', user.id)
           .eq('month', month)
-          .single();
+          .maybeSingle();
         setUsage(data ? { tokens_used: data.tokens_used, ceiling: data.ceiling ?? 50000 } : { tokens_used: 0, ceiling: 50000 });
       }
     });

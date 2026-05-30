@@ -68,7 +68,13 @@ function friendlyError(msg: string): string {
 }
 
 function isRateLimit(msg: string, status?: number) {
-  return status === 429 || msg.includes('over_email_send_rate_limit') || msg.includes('rate limit')
+  return (
+    status === 429 ||
+    msg.includes('429') ||
+    msg.includes('Too Many Requests') ||
+    msg.includes('over_email_send_rate_limit') ||
+    msg.includes('rate limit')
+  )
 }
 
 function AuthPageContent() {
@@ -196,7 +202,7 @@ function AuthPageContent() {
       const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
       if (signInErr) {
         if (isRateLimit(signInErr.message, signInErr.status)) {
-          setError('Too many requests. Please wait a minute before trying again.')
+          setError('Too many attempts. Please wait a few minutes before trying again.')
         } else {
           const next = failedAttempts + 1
           setFailedAttempts(next)
@@ -219,31 +225,23 @@ function AuthPageContent() {
       }
     } else {
       const { data, error: signUpErr } = await supabase.auth.signUp({ email, password })
+      console.log('[signup] error:', signUpErr, '| data:', data)
       if (signUpErr) {
         if (isRateLimit(signUpErr.message, signUpErr.status)) {
-          setError('Too many requests. Please wait a minute before trying again.')
-        } else if (signUpErr.message.includes('User already registered') || signUpErr.message.includes('already been registered')) {
+          setError('Too many attempts. Please wait a few minutes before trying again.')
+        } else if (
+          signUpErr.message.includes('User already registered') ||
+          signUpErr.message.includes('already been registered') ||
+          (signUpErr as any).code === 'user_already_exists'
+        ) {
           setIsDuplicateEmail(true)
         } else {
-          setError(friendlyError(signUpErr.message))
+          setError(signUpErr.message)
         }
       } else {
-        const user = data?.user
-        // Detect duplicate: Supabase "fake success" for existing emails.
-        // Behavior varies by project config — identities may be empty OR populated.
-        // created_at is the reliable signal: a real new account is always <10s old.
-        const justCreated = user?.created_at
-          ? Date.now() - new Date(user.created_at).getTime() < 10000
-          : false
-        const hasIdentity = (user?.identities?.length ?? 0) > 0
-
-        if (!user || !justCreated || !hasIdentity) {
-          setIsDuplicateEmail(true)
-        } else {
-          setSuccess('Account created! Check your email to confirm, then sign in.')
-          setMode('signin')
-          setPassword('')
-        }
+        setSuccess('Account created! Check your email to confirm, then sign in.')
+        setMode('signin')
+        setPassword('')
       }
     }
 
