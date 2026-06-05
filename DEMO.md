@@ -66,7 +66,8 @@ create table trips (
   end_date text not null,
   created_at timestamp with time zone default now(),
   itinerary_json jsonb not null,
-  deleted_at timestamp with time zone default null
+  deleted_at timestamp with time zone default null,
+  is_public boolean default false  ← ADD THIS LINE
 );
 alter table trips enable row level security;
 create policy "Users can only access their own trips"

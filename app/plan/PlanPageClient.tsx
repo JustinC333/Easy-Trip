@@ -1081,31 +1081,33 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
   const duration = tripDuration(data.startDate, data.endDate);
   const numberOfNights = duration ? duration.nights : 0;
 
-  const flightExceedsBudget = perPerson !== null && data.flightBudget > 0 && data.flightBudget >= perPerson;
-  const flightValid = !isFlying || (data.flightBudget > 0 && !flightExceedsBudget);
+  const flightAtZero = perPerson !== null && data.flightBudget > 0 && data.flightBudget === perPerson;
+  const flightOverBudget = perPerson !== null && data.flightBudget > 0 && data.flightBudget > perPerson;
+  const flightValid =
+    !isFlying
+    || (!flightRequired && data.flightBudget === 0)
+    || (data.flightBudget > 0 && !flightOverBudget);
 
   const remainingAfterFlight: number | null = (() => {
     if (perPerson === null) return null;
-    if (!isFlying) return perPerson;
-    if (!flightValid || data.flightBudget <= 0) return null;
+    if (!isFlying || data.flightBudget === 0) return perPerson;
     return perPerson - data.flightBudget;
   })();
 
-  const isAirbnb = data.accommodation === 'Airbnb / VRBO';
   let accommodationPerPersonTotal = 0;
   let totalAccommodationCost = 0;
   if (!isCamping && data.accommodationBudget > 0 && numberOfNights > 0) {
-    if (isAirbnb) {
-      totalAccommodationCost = data.accommodationBudget * numberOfNights;
-      accommodationPerPersonTotal = totalAccommodationCost / headCount;
-    } else {
-      accommodationPerPersonTotal = data.accommodationBudget * numberOfNights;
-      totalAccommodationCost = accommodationPerPersonTotal * headCount;
-    }
+    totalAccommodationCost = data.accommodationBudget * numberOfNights;
+    accommodationPerPersonTotal = totalAccommodationCost / headCount;
   }
 
-  const accomExceedsBudget = remainingAfterFlight !== null && accommodationPerPersonTotal > 0 && accommodationPerPersonTotal >= remainingAfterFlight;
-  const accomLocked = isFlying && !flightValid;
+  const remainingAfterAccom = remainingAfterFlight !== null && accommodationPerPersonTotal > 0
+    ? Math.round(remainingAfterFlight - accommodationPerPersonTotal)
+    : null;
+  const accomAtZero = remainingAfterAccom === 0;
+  const accomOverBudget = remainingAfterAccom !== null && remainingAfterAccom < 0;
+  const accomExceedsBudget = accomOverBudget;
+  const accomLocked = flightRequired && data.flightBudget === 0;
   const accomValid = isCamping || (!accomLocked && data.accommodationBudget > 0 && !accomExceedsBudget);
 
   const totalFlightCost = isFlying && flightValid && data.flightBudget > 0 ? data.flightBudget * headCount : 0;
@@ -1115,10 +1117,10 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
   const accomTypeName = data.accommodation || 'accommodation';
 
   const accomInfo = () => {
-    if (data.accommodation === 'Hotel') return { label: 'Hotel budget per person per night', placeholder: '150' };
-    if (data.accommodation === 'Airbnb / VRBO') return { label: 'Airbnb/VRBO budget per night (total, not per person)', placeholder: '200' };
-    if (data.accommodation === 'Hostel') return { label: 'Hostel budget per person per night', placeholder: '50' };
-    return { label: 'Accommodation budget per person per night', placeholder: '100' };
+    if (data.accommodation === 'Hotel') return { label: 'Hotel budget per night (total)', placeholder: '150' };
+    if (data.accommodation === 'Airbnb / VRBO') return { label: 'Airbnb/VRBO budget per night (total)', placeholder: '200' };
+    if (data.accommodation === 'Hostel') return { label: 'Hostel budget per night (total)', placeholder: '50' };
+    return { label: 'Accommodation budget per night (total)', placeholder: '100' };
   };
 
   const displayBudget = data.budget >= 100000 ? 'Unlimited' : data.budget >= 100 ? `$${data.budget.toLocaleString()}` : '—';
@@ -1333,7 +1335,8 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
             <div>
               <FieldLabel>
                 Flight budget per person{' '}
-                <span style={{ color: '#f87171' }}>*</span>
+                {flightRequired && <span style={{ color: '#f87171' }}>*</span>}
+                {!flightRequired && <span style={{ fontSize: 11, color: C.textMuted, fontWeight: 400 }}>(optional)</span>}
               </FieldLabel>
               <div style={subInputStyle(showErrors && flightRequired && !data.flightBudget)}>
                 <span style={{ padding: '13px 12px 13px 16px', fontSize: 17, fontWeight: 700, color: C.greenBright, borderRight: `1px solid ${C.border}`, lineHeight: 1, userSelect: 'none' }}>$</span>
@@ -1346,10 +1349,21 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
 
               {/* Flight validation feedback */}
               {data.flightBudget > 0 && perPerson !== null && (
-                flightExceedsBudget ? (
+                flightOverBudget ? (
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 8, padding: '10px 13px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, fontSize: 13, color: 'rgba(248,113,113,0.9)', lineHeight: 1.5 }}>
                     {errIcon}
-                    <span>Flight cost exceeds your per person budget of <strong>${perPerson.toLocaleString()}</strong>. Please enter a lower amount.</span>
+                    <span>
+                      ${data.flightBudget.toLocaleString()}/person flight cost exceeds your per-person budget of <strong>${perPerson.toLocaleString()}</strong> by <strong>${(data.flightBudget - perPerson).toLocaleString()}</strong>. Please enter a lower amount.
+                    </span>
+                  </div>
+                ) : flightAtZero ? (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 8, padding: '10px 13px', background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.35)', borderRadius: 8, fontSize: 13, color: 'rgba(234,179,8,0.95)', lineHeight: 1.5 }}>
+                    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}>
+                      <path d="M7 2v5M7 10v.5" /><circle cx="7" cy="7" r="6" />
+                    </svg>
+                    <span>
+                      You'll have <strong>$0 left</strong> after flights — consider upping your budget or reconsidering your choices.
+                    </span>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 8, padding: '10px 13px', background: 'rgba(52,212,117,0.07)', border: '1px solid rgba(52,212,117,0.22)', borderRadius: 8, fontSize: 13, color: C.greenBright, lineHeight: 1.5 }}>
@@ -1384,18 +1398,32 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
 
               {/* Accommodation validation feedback */}
               {!accomLocked && data.accommodationBudget > 0 && remainingAfterFlight !== null && (
-                accomExceedsBudget ? (
+                accomOverBudget ? (
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 8, padding: '10px 13px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, fontSize: 13, color: 'rgba(248,113,113,0.9)', lineHeight: 1.5 }}>
                     {errIcon}
-                    <span>Accommodation cost exceeds your remaining budget of <strong>${remainingAfterFlight.toLocaleString()}</strong> per person. Please enter a lower amount.</span>
+                    <span>
+                      ${data.accommodationBudget.toLocaleString()}/night × {numberOfNights} night{numberOfNights !== 1 ? 's' : ''} = <strong>${Math.round(totalAccommodationCost).toLocaleString()} total</strong> (${Math.round(accommodationPerPersonTotal).toLocaleString()}/person), which exceeds your <strong>${Math.round(remainingAfterFlight).toLocaleString()}</strong> remaining per person.
+                    </span>
+                  </div>
+                ) : accomAtZero ? (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 8, padding: '10px 13px', background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.35)', borderRadius: 8, fontSize: 13, color: 'rgba(234,179,8,0.95)', lineHeight: 1.5 }}>
+                    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}>
+                      <path d="M7 2v5M7 10v.5" /><circle cx="7" cy="7" r="6" />
+                    </svg>
+                    <span>
+                      Total accommodation: <strong>${Math.round(totalAccommodationCost).toLocaleString()}</strong> (${Math.round(accommodationPerPersonTotal).toLocaleString()}/person for {numberOfNights} night{numberOfNights !== 1 ? 's' : ''}). You'll have <strong>$0 left</strong> — consider upping your budget or reconsidering your choices.
+                    </span>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 8, padding: '10px 13px', background: 'rgba(52,212,117,0.07)', border: '1px solid rgba(52,212,117,0.22)', borderRadius: 8, fontSize: 13, color: C.greenBright, lineHeight: 1.5 }}>
                     <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, flexShrink: 0 }}>
                       <path d="M2 7l3.5 3.5L12 3" />
                     </svg>
-                    Remaining budget per person after flights and {accomTypeName}:{' '}
-                    <strong style={{ marginLeft: 3 }}>${Math.round(remainingAfterFlight - accommodationPerPersonTotal).toLocaleString()}</strong>
+                    <span>
+                      Total accommodation cost: <strong>${Math.round(totalAccommodationCost).toLocaleString()}</strong>{' '}
+                      (${Math.round(accommodationPerPersonTotal).toLocaleString()}/person for {numberOfNights} night{numberOfNights !== 1 ? 's' : ''})
+                      {' · '}Remaining per person: <strong>${(remainingAfterAccom ?? 0).toLocaleString()}</strong>
+                    </span>
                   </div>
                 )
               )}
@@ -1913,7 +1941,8 @@ export default function PlanPageClient() {
       if (!form.groupSize) return false;
       if (needsCount && form.groupCount < 3) return false;
       if (form.budget < 100) return false;
-      if (isFlying && form.flightBudget <= 0) return false;
+      const flightReq = form.transportation === 'Flying';
+      if (flightReq && form.flightBudget <= 0) return false;
       if (!isCamping && form.accommodationBudget <= 0) return false;
       // Real-time budget validation
       const hc = form.groupSize === 'solo' ? 1
@@ -1922,14 +1951,11 @@ export default function PlanPageClient() {
         : form.groupSize === 'small' ? 3 : 6;
       if (form.budget < 100000) {
         const bpp = Math.round(form.budget / hc);
-        if (isFlying && form.flightBudget >= bpp) return false;
+        if (form.flightBudget > 0 && form.flightBudget >= bpp) return false;
         if (!isCamping) {
-          const rem = bpp - (isFlying ? form.flightBudget : 0);
+          const rem = bpp - (form.flightBudget > 0 ? form.flightBudget : 0);
           const nights = tripDuration(form.startDate, form.endDate)?.nights ?? 0;
-          const isAirbnb = form.accommodation === 'Airbnb / VRBO';
-          const accomPPTotal = isAirbnb
-            ? (form.accommodationBudget * nights) / hc
-            : form.accommodationBudget * nights;
+          const accomPPTotal = (form.accommodationBudget * nights) / hc;
           if (accomPPTotal >= rem) return false;
         }
       }
