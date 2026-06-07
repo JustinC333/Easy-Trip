@@ -50,5 +50,11 @@ serve.mjs
 #   git rm -r --cached DESIGN.md
 # transcripts/
 #   git rm -r --cached transcripts
+# REVIEW-PLAN.md
+#  git rm -r --cached REVIEW-PLAN.md
+# REGRETS.md
+#  git rm -r --cached REGRETS.md
+# proposal/
+# git rm -r --cached proposal
 
 # make sure to git push after
