@@ -82,6 +82,13 @@ export type Itinerary = {
   googleFlightsUrl?: string
   hotels?: { name: string; pricePerNight: number | null; url?: string }[]
   accommodationType?: string
+  dataConfidence?: {
+    hitRate: number
+    totalPlaceNames: number
+    matchedPlaceNames: number
+    isHighConfidence: boolean
+    flag: 'high' | 'medium' | 'low'
+  }
 }
 
 export type UsageRecord = {

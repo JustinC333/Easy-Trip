@@ -234,6 +234,66 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ── Hallucination check ──────────────────────────────────────────────────
+    const enrichedContext = body.enrichedContext;
+
+    const knownPlaces: string[] = [];
+    if (enrichedContext?.hotels?.options) {
+      enrichedContext.hotels.options.forEach((h: any) => {
+        if (h.name) knownPlaces.push(h.name.toLowerCase());
+      });
+    }
+    if (enrichedContext?.places?.attractions) {
+      enrichedContext.places.attractions.forEach((p: any) => {
+        if (p.name) knownPlaces.push(p.name.toLowerCase());
+      });
+    }
+    if (enrichedContext?.nps?.parks) {
+      enrichedContext.nps.parks.forEach((p: any) => {
+        if (p.name) knownPlaces.push(p.name.toLowerCase());
+      });
+    }
+    console.log('[/api/generate] known real places:', knownPlaces.length, knownPlaces);
+
+    const generatedPlaceNames: string[] = [];
+    itinerary.days.forEach((day: any) => {
+      day.activities.forEach((activity: any) => {
+        if (activity.place_name) {
+          generatedPlaceNames.push(activity.place_name.toLowerCase());
+        }
+      });
+    });
+    console.log('[/api/generate] generated place names:', generatedPlaceNames.length, generatedPlaceNames);
+
+    const matches = generatedPlaceNames.filter(generated =>
+      knownPlaces.some(known =>
+        known.includes(generated) ||
+        generated.includes(known) ||
+        generated.split(' ').some(word => word.length > 4 && known.includes(word))
+      )
+    );
+
+    const hitRate = generatedPlaceNames.length > 0
+      ? matches.length / generatedPlaceNames.length
+      : 0;
+
+    console.log('[/api/generate] hallucination check:', {
+      totalPlaceNames: generatedPlaceNames.length,
+      matchedToRealData: matches.length,
+      hitRate: Math.round(hitRate * 100) + '%',
+      matchedPlaces: matches,
+      unmatchedPlaces: generatedPlaceNames.filter(p => !matches.includes(p)),
+    });
+
+    (itinerary as any).dataConfidence = {
+      hitRate: Math.round(hitRate * 100),
+      totalPlaceNames: generatedPlaceNames.length,
+      matchedPlaceNames: matches.length,
+      isHighConfidence: hitRate >= 0.5,
+      flag: hitRate >= 0.7 ? 'high' : hitRate >= 0.4 ? 'medium' : 'low',
+    };
+    // ────────────────────────────────────────────────────────────────────────
+
     return NextResponse.json({ itinerary, tokensUsed });
   } catch (error) {
     if (error instanceof Anthropic.APIError) {
