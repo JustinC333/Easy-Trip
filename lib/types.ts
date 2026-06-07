@@ -10,6 +10,53 @@ export type Trip = {
   is_public?: boolean
 }
 
+export type FlightSegment = {
+  from: string
+  to: string
+  airline: string
+  flightNumber: string
+  departureTime: string
+  arrivalTime: string
+  aircraft: string
+  duration: string
+}
+
+export type FlightOption = {
+  airline: string
+  airlineCode?: string
+  departureTime: string
+  arrivalTime: string
+  departureDate?: string
+  duration?: string
+  durationMinutes?: number
+  stops: number
+  price: number
+  pricePerPerson: number
+  isWithinBudget?: boolean
+  segments?: FlightSegment[]
+  bookingToken?: string
+}
+
+export type ArrivalAirport = {
+  code: string
+  name?: string
+  city: string
+  originalDestination?: string
+  requiresDriving?: boolean
+  driveInfo?: { distance: string; duration: string } | null
+  /** @deprecated use driveInfo */
+  distanceToDestination?: string
+  /** @deprecated use driveInfo */
+  driveTimeToDestination?: string
+}
+
+export type DepartureInfo = {
+  city?: string
+  code?: string
+  cabinClass?: number | string
+  budgetPerPerson?: number
+}
+
 export type Itinerary = {
   summary: string
   days: {
@@ -24,6 +71,15 @@ export type Itinerary = {
     }[]
   }[]
   tips: string[]
+  departureCity?: string
+  departureCode?: string
+  flightBudgetPerPerson?: number
+  cabinClass?: string
+  departureInfo?: DepartureInfo
+  flights?: FlightOption[]
+  arrivalAirport?: ArrivalAirport
+  flightMessage?: string
+  googleFlightsUrl?: string
 }
 
 export type UsageRecord = {

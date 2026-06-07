@@ -5,6 +5,10 @@ interface EnrichRequest {
   state: string;
   startDate: string;
   endDate: string;
+  departureCode?: string;
+  numberOfPeople?: number;
+  cabinClass?: number;
+  flightBudgetPerPerson?: number | null;
 }
 
 const STATE_CODES: Record<string, string> = {
@@ -106,7 +110,6 @@ async function fetchHotels(destination: string, startDate: string, endDate: stri
   console.log('[/api/enrich] Hotels resolved dest_id:', destId, 'dest_type:', destType);
 
   // Step 2 — search hotels
-  // startDate/endDate must be YYYY-MM-DD
   const checkin = startDate.slice(0, 10);
   const checkout = endDate.slice(0, 10);
   console.log('[/api/enrich] Hotels search dates — checkin:', checkin, 'checkout:', checkout);
@@ -143,22 +146,9 @@ async function fetchHotels(destination: string, startDate: string, endDate: stri
   const resultArray = hotelData.result ?? hotelData.results ?? [];
   console.log('[/api/enrich] Hotels result count:', resultArray.length);
 
-  // Log the full first result so we can inspect every price field
-  if (resultArray.length > 0) {
-    const first = resultArray[0] as Record<string, unknown>;
-    console.log('[/api/enrich] Hotels first result (price fields) — '
-      + 'min_total_price:', first.min_total_price,
-      '| price_breakdown:', JSON.stringify(first.price_breakdown),
-      '| composite_price_breakdown:', JSON.stringify(first.composite_price_breakdown),
-    );
-  }
-
   const options = resultArray
     .slice(0, 5)
     .map((h: Record<string, unknown>) => {
-      // composite_price_breakdown.gross_amount_per_night is the per-night rate in the
-      // selected currency. Fall back to min_total_price (which is the *total* stay cost)
-      // divided by the number of nights if the per-night field is absent.
       const cpb = h.composite_price_breakdown as Record<string, Record<string, number>> | null;
       const pb  = h.price_breakdown as Record<string, number> | null;
 
@@ -184,6 +174,34 @@ async function fetchHotels(destination: string, startDate: string, endDate: stri
   return { options };
 }
 
+async function fetchFlights(
+  baseUrl: string,
+  departureCode: string,
+  destination: string,
+  startDate: string,
+  endDate: string,
+  numberOfPeople: number,
+  cabinClass: number,
+  flightBudgetPerPerson: number | null,
+) {
+  const res = await fetch(`${baseUrl}/api/flights/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      departureCode,
+      arrivalCity: destination,
+      startDate,
+      endDate,
+      numberOfPeople,
+      cabinClass,
+      flightBudgetPerPerson,
+    }),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Flights API ${res.status}`);
+  return res.json();
+}
+
 export async function POST(req: NextRequest) {
   let body: EnrichRequest;
   try {
@@ -192,15 +210,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { destination, state, startDate, endDate } = body;
+  const { destination, state, startDate, endDate, departureCode, numberOfPeople, cabinClass, flightBudgetPerPerson } = body;
   if (!destination) {
     return NextResponse.json({ error: 'destination is required' }, { status: 400 });
   }
 
-  const [npsResult, placesResult, hotelsResult] = await Promise.allSettled([
+  const baseUrl = new URL(req.url).origin;
+  const flightsPromise = departureCode
+    ? fetchFlights(baseUrl, departureCode, destination, startDate, endDate, numberOfPeople ?? 1, cabinClass ?? 1, flightBudgetPerPerson ?? null)
+    : Promise.resolve(null);
+
+  const [npsResult, placesResult, hotelsResult, flightsResult] = await Promise.allSettled([
     fetchNPS(state),
     fetchPlaces(destination),
     fetchHotels(destination, startDate, endDate),
+    flightsPromise,
   ]);
 
   if (npsResult.status === 'rejected')
@@ -209,10 +233,13 @@ export async function POST(req: NextRequest) {
     console.error('[/api/enrich] Places failed:', placesResult.reason);
   if (hotelsResult.status === 'rejected')
     console.error('[/api/enrich] Hotels failed:', hotelsResult.reason);
+  if (flightsResult.status === 'rejected')
+    console.error('[/api/enrich] Flights failed:', flightsResult.reason);
 
   return NextResponse.json({
     nps: npsResult.status === 'fulfilled' ? npsResult.value : null,
     places: placesResult.status === 'fulfilled' ? placesResult.value : null,
     hotels: hotelsResult.status === 'fulfilled' ? hotelsResult.value : null,
+    flights: flightsResult.status === 'fulfilled' ? flightsResult.value : null,
   });
 }

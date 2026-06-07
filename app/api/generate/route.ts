@@ -26,6 +26,9 @@ interface GenerateRequest {
   flightBudgetPerPerson?: number;
   accommodationBudget?: number;
   mustHaves?: string;
+  departureCity?: string;
+  departureCode?: string;
+  cabinClass?: string;
   enrichedContext: EnrichedContext;
 }
 
@@ -70,7 +73,7 @@ function buildUserPrompt(body: GenerateRequest): string {
   ];
 
   if (body.flightBudgetPerPerson) {
-    lines.push(`FLIGHT BUDGET PER PERSON: $${body.flightBudgetPerPerson}`);
+    lines.push(`FLIGHT BUDGET PER PERSON (round trip): $${body.flightBudgetPerPerson}`);
   }
   if (body.accommodationBudget) {
     lines.push(`ACCOMMODATION BUDGET (total): $${body.accommodationBudget}`);
@@ -105,6 +108,36 @@ function buildUserPrompt(body: GenerateRequest): string {
       lines.push(`  - ${p.name} — ${fee}. ${p.description?.slice(0, 150)}...`);
     }
     lines.push(``);
+  }
+
+  if (body.departureCode && body.flightBudgetPerPerson) {
+    const cabinClass = body.cabinClass ?? 'Economy';
+    const cabinClassUrl = cabinClass === 'Premium Economy' ? 'premium' : cabinClass.toLowerCase();
+    const primaryDest = body.destinations[0];
+
+    lines.push(
+      `FLIGHT INFORMATION:`,
+      `The user is flying from ${body.departureCity} (${body.departureCode}).`,
+      `Their round trip flight budget is $${body.flightBudgetPerPerson} per person.`,
+      `Cabin class preference: ${cabinClass}`,
+      `Travel dates: ${body.startDate} to ${body.endDate}`,
+      `Number of passengers: ${body.numberOfPeople}`,
+      ``,
+      `In Day 1 of the itinerary:`,
+      `1. Include a morning travel activity for the flight`,
+      `2. Search Google Flights or similar for this route:`,
+      `   ${body.departureCode} → nearest major airport to ${primaryDest.city}, ${primaryDest.state}`,
+      `   Departure: ${body.startDate}, Return: ${body.endDate}`,
+      `3. If you know of likely flight options for this route within the budget, mention specific airlines and approximate prices`,
+      `4. Include a Google Flights search link in the activity description using this format:`,
+      `   https://www.google.com/flights#search;f=${body.departureCode};t=[ARRIVAL_AIRPORT_CODE];d=${body.startDate};r=${body.endDate};c=${cabinClassUrl}`,
+      `   (Replace [ARRIVAL_AIRPORT_CODE] with the actual IATA code of the nearest major airport to ${primaryDest.city})`,
+      `5. If the destination has no direct airport, include a driving leg from the nearest airport to the destination with estimated drive time`,
+      ``,
+      `In the last day of the itinerary:`,
+      `Include a return flight activity with departure from the destination airport back to ${body.departureCode} (${body.departureCity}).`,
+      ``,
+    );
   }
 
   lines.push(
@@ -172,7 +205,7 @@ export async function POST(req: NextRequest) {
   try {
     const response = await client.messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 4000,
+      max_tokens: 8192,
       system:
         'You are an expert US travel planner. Your job is to create detailed, realistic, personalized day-by-day trip itineraries. You MUST respond with ONLY valid JSON — no markdown, no backticks, no explanation text before or after. Your entire response must be parseable by JSON.parse().',
       messages: [{ role: 'user', content: buildUserPrompt(body) }],

@@ -151,6 +151,223 @@ function ErrorState({ message }: { message: string | null }) {
   )
 }
 
+/* ─── Helpers ─── */
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
+
+function buildBookUrl(departureCode: string, arrivalCode: string, date: string): string {
+  return `https://www.google.com/travel/flights?q=flights+from+${departureCode}+to+${arrivalCode}+on+${date}`
+}
+
+/* ─── Flight card ─── */
+function FlightCard({ flight, departureCode, arrivalAirport }: {
+  flight: import('@/lib/types').FlightOption;
+  departureCode?: string;
+  arrivalAirport?: import('@/lib/types').ArrivalAirport;
+}) {
+  const stopsLabel = flight.stops === 0 ? 'Nonstop' : `${flight.stops} stop${flight.stops !== 1 ? 's' : ''}`;
+  const [hover, setHover] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const withinBudget = flight.isWithinBudget !== false;
+  const borderAccent = withinBudget ? C.green : '#f97316';
+  const arrCode = arrivalAirport?.code ?? '';
+
+  const duration = flight.durationMinutes
+    ? formatDuration(flight.durationMinutes)
+    : flight.duration ?? ''
+
+  // Connecting airports from segments (middle stops only)
+  const connectingCodes: string[] = []
+  if (flight.segments && flight.segments.length > 1) {
+    flight.segments.slice(0, -1).forEach(s => {
+      if (s.to && !connectingCodes.includes(s.to)) connectingCodes.push(s.to)
+    })
+  }
+
+  const bookUrl = departureCode && arrCode && flight.departureDate
+    ? buildBookUrl(departureCode, arrCode, flight.departureDate)
+    : `https://www.google.com/flights`
+
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: hover ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${hover ? (withinBudget ? 'rgba(52,212,117,0.3)' : 'rgba(249,115,22,0.3)') : C.border}`,
+        borderLeft: `3px solid ${borderAccent}`,
+        borderRadius: 14,
+        padding: '16px 18px',
+        display: 'flex', flexDirection: 'column', gap: 10,
+        transition: 'background 0.2s ease, border-color 0.2s ease',
+        boxShadow: hover ? `0 4px 20px ${withinBudget ? 'rgba(52,212,117,0.08)' : 'rgba(249,115,22,0.08)'}` : 'none',
+      }}>
+
+      {/* Airline + code badge */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: C.textPrimary, letterSpacing: '-0.01em' }}>
+          {flight.airline}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {flight.airlineCode && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, color: C.textMuted,
+              background: 'rgba(255,255,255,0.05)',
+              border: `1px solid ${C.border}`,
+              borderRadius: 4, padding: '2px 6px',
+              letterSpacing: '0.06em',
+            }}>{flight.airlineCode}</span>
+          )}
+          {!withinBudget && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, color: '#f97316',
+              background: 'rgba(249,115,22,0.1)',
+              border: '1px solid rgba(249,115,22,0.25)',
+              borderRadius: 100, padding: '2px 8px',
+            }}>Over budget</span>
+          )}
+        </div>
+      </div>
+
+      {/* Route */}
+      {(departureCode || arrCode) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, color: C.textPrimary, letterSpacing: '0.04em' }}>
+          {departureCode && <span>{departureCode}</span>}
+          <svg viewBox="0 0 16 6" fill="none" style={{ width: 24, flexShrink: 0 }}>
+            <path d="M0 3h14M11 1l3 2-3 2" stroke={C.textMuted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          {arrCode && <span>{arrCode}</span>}
+        </div>
+      )}
+
+      {/* Times + date */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
+          <span style={{ fontWeight: 700, color: C.textPrimary }}>{flight.departureTime}</span>
+          <span style={{ color: C.textMuted, fontSize: 10 }}>→</span>
+          <span style={{ fontWeight: 700, color: C.textPrimary }}>{flight.arrivalTime}</span>
+        </div>
+        {flight.departureDate && (
+          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{flight.departureDate}</div>
+        )}
+      </div>
+
+      {/* Duration + stops + via */}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        {duration && (
+          <span style={{
+            fontSize: 11, color: C.textMuted,
+            background: 'rgba(255,255,255,0.05)',
+            border: `1px solid ${C.border}`,
+            borderRadius: 100, padding: '2px 8px',
+          }}>{duration}</span>
+        )}
+        <span style={{
+          fontSize: 11,
+          color: flight.stops === 0 ? C.greenBright : C.textMuted,
+          background: flight.stops === 0 ? 'rgba(52,212,117,0.08)' : 'rgba(255,255,255,0.05)',
+          border: `1px solid ${flight.stops === 0 ? 'rgba(52,212,117,0.2)' : C.border}`,
+          borderRadius: 100, padding: '2px 8px',
+          fontWeight: flight.stops === 0 ? 600 : 400,
+        }}>{stopsLabel}</span>
+        {connectingCodes.length > 0 && (
+          <span style={{ fontSize: 11, color: C.textMuted }}>
+            via {connectingCodes.join(', ')}
+          </span>
+        )}
+      </div>
+
+      {/* Price */}
+      <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, marginTop: 2 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#4ade80', letterSpacing: '-0.02em', lineHeight: 1 }}>
+          ${flight.pricePerPerson.toLocaleString()}
+          <span style={{ fontSize: 12, fontWeight: 400, color: C.textMuted }}>/person</span>
+        </div>
+        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>
+          Total ${flight.price.toLocaleString()} for all travelers
+        </div>
+      </div>
+
+      {/* Expandable segments */}
+      {flight.segments && flight.segments.length > 0 && (
+        <div>
+          <button
+            onClick={() => setExpanded(v => !v)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 5,
+              fontSize: 11, color: C.textMuted, padding: 0,
+              fontFamily: "'DM Sans', system-ui, sans-serif",
+              transition: 'color 0.15s ease',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = C.textSecondary)}
+            onMouseLeave={e => (e.currentTarget.style.color = C.textMuted)}
+          >
+            <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+              style={{ width: 8, height: 8, transform: expanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s ease' }}>
+              <path d="M2 3.5l3 3 3-3"/>
+            </svg>
+            {expanded ? 'Hide' : 'Show'} flight details
+          </button>
+
+          {expanded && (
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {flight.segments.map((seg, i) => (
+                <div key={i} style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 8, padding: '10px 12px',
+                  fontSize: 12,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontWeight: 700, color: C.textPrimary, letterSpacing: '0.02em' }}>
+                      {seg.from} → {seg.to}
+                    </span>
+                    <span style={{ color: C.textMuted, fontSize: 10 }}>{seg.flightNumber}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, color: C.textMuted }}>
+                    <span>{seg.departureTime} → {seg.arrivalTime}</span>
+                    {seg.duration && <span>{seg.duration}</span>}
+                  </div>
+                  {seg.aircraft && (
+                    <div style={{ fontSize: 10, color: C.textMuted, marginTop: 3 }}>{seg.aircraft}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* CTA */}
+      <a
+        href={bookUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          background: 'rgba(52,212,117,0.1)',
+          border: '1px solid rgba(52,212,117,0.25)',
+          borderRadius: 8, padding: '9px 14px',
+          fontSize: 12, fontWeight: 600, color: C.greenBright,
+          textDecoration: 'none',
+          transition: 'background 0.2s ease, border-color 0.2s ease',
+        }}
+        onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { background: 'rgba(52,212,117,0.18)', borderColor: 'rgba(52,212,117,0.45)' })}
+        onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { background: 'rgba(52,212,117,0.1)', borderColor: 'rgba(52,212,117,0.25)' })}
+      >
+        Book this flight
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}>
+          <path d="M2 2h8v8M10 2L2 10" />
+        </svg>
+      </a>
+    </div>
+  );
+}
+
 /* ─── Itinerary view ─── */
 function ItineraryView({ trip, onLogout, userEmail }: { trip: Trip; onLogout: () => void; userEmail: string }) {
   const itin = trip.itinerary_json
@@ -367,6 +584,142 @@ function ItineraryView({ trip, onLogout, userEmail }: { trip: Trip; onLogout: ()
             {itin.summary}
           </p>
         </div>
+
+        {/* ── FLIGHT OPTIONS ── */}
+        {itin.departureInfo && (
+          <div style={{
+            marginBottom: 32,
+            animation: 'trip-fadein 0.5s ease-out 0.12s both',
+          }}>
+            {/* Section header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                background: 'rgba(52,212,117,0.1)',
+                border: '1px solid rgba(52,212,117,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg viewBox="0 0 16 16" fill="none" stroke={C.greenBright} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                  <path d="M1.5 11L4 8.5l-1.5-3.5L3.5 4.5l4.5 3 3.5-1.5a1.2 1.2 0 0 1 0 2.5L8 7l-1.5 4.5-1 .5-1-3L2 12z" />
+                </svg>
+              </div>
+              <h2 className="et-display" style={{ fontSize: 18, fontWeight: 600, color: C.textPrimary, margin: 0, letterSpacing: '-0.01em' }}>
+                ✈️ Flight Options
+              </h2>
+            </div>
+
+            {/* Subtitle */}
+            <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 16, paddingLeft: 42 }}>
+              From {itin.departureInfo.city}{itin.departureInfo.code ? ` (${itin.departureInfo.code})` : ''}
+              {itin.departureInfo.budgetPerPerson ? ` · Budget: $${itin.departureInfo.budgetPerPerson.toLocaleString()}/person` : ''}
+            </div>
+
+            {/* Driving banner — shown when arrival airport requires a drive */}
+            {itin.arrivalAirport?.requiresDriving && itin.arrivalAirport.driveInfo && (
+              <div style={{
+                marginBottom: 16,
+                background: 'rgba(26,130,78,0.08)',
+                border: '1px solid rgba(52,212,117,0.2)',
+                borderLeft: `3px solid ${C.green}`,
+                borderRadius: '0 10px 10px 0',
+                padding: '12px 16px',
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.textSecondary }}>
+                  <span>✈️</span>
+                  <span>
+                    Nearest airport to <strong style={{ color: C.textPrimary }}>{itin.arrivalAirport.originalDestination ?? trip.destination}</strong>:&nbsp;
+                    <strong style={{ color: C.textPrimary }}>{itin.arrivalAirport.city} ({itin.arrivalAirport.code})</strong>
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.textMuted }}>
+                  <span>🚗</span>
+                  <span>
+                    <strong style={{ color: C.greenBright }}>{itin.arrivalAirport.driveInfo.duration}</strong>
+                    {' '}drive ({itin.arrivalAirport.driveInfo.distance}) after landing
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* CASE A — flights found */}
+            {itin.flights && itin.flights.length > 0 ? (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: 12,
+              }}>
+                {itin.flights.map((flight, i) => (
+                  <FlightCard
+                    key={i}
+                    flight={flight}
+                    departureCode={itin.departureInfo?.code ?? itin.departureCode}
+                    arrivalAirport={itin.arrivalAirport}
+                  />
+                ))}
+              </div>
+            ) : (
+              /* CASE B — no flights found */
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: `1px solid ${C.border}`,
+                borderRadius: 14,
+                padding: '22px 24px',
+                display: 'flex', flexDirection: 'column', gap: 12,
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: 14, color: C.textSecondary }}>
+                    <span style={{ color: C.textMuted, fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>From</span>
+                    <span style={{ marginLeft: 8, fontWeight: 600, color: C.textPrimary }}>
+                      {itin.departureInfo.city}{itin.departureInfo.code ? ` (${itin.departureInfo.code})` : ''}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 14, color: C.textSecondary }}>
+                    <span style={{ color: C.textMuted, fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>To</span>
+                    <span style={{ marginLeft: 8, fontWeight: 600, color: C.textPrimary }}>{trip.destination}</span>
+                  </div>
+                  <div style={{ fontSize: 14, color: C.textSecondary }}>
+                    <span style={{ color: C.textMuted, fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Dates</span>
+                    <span style={{ marginLeft: 8, color: C.textSecondary }}>{trip.start_date} → {trip.end_date}</span>
+                  </div>
+                </div>
+
+                {itin.flightMessage && (
+                  <p style={{ fontSize: 13, color: C.textMuted, fontStyle: 'italic', margin: 0, lineHeight: 1.6 }}>
+                    {itin.flightMessage}
+                  </p>
+                )}
+
+                <a
+                  href={
+                    itin.googleFlightsUrl ??
+                    `https://www.google.com/travel/flights?q=flights+from+${itin.departureInfo.code ?? ''}+to+${encodeURIComponent(trip.destination)}+on+${trip.start_date}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    background: 'linear-gradient(140deg,#1e8a52 0%,#0d5530 100%)',
+                    border: '1px solid rgba(50,160,100,0.35)',
+                    borderRadius: 10, padding: '12px 20px',
+                    fontSize: 14, fontWeight: 600,
+                    color: 'white', textDecoration: 'none',
+                    boxShadow: '0 0 20px rgba(26,130,78,0.28)',
+                    alignSelf: 'flex-start',
+                    transition: 'box-shadow 0.2s ease, transform 0.15s ease',
+                  }}
+                  onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { boxShadow: '0 0 32px rgba(26,130,78,0.5)', transform: 'translateY(-1px)' })}
+                  onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { boxShadow: '0 0 20px rgba(26,130,78,0.28)', transform: 'translateY(0)' })}
+                >
+                  Search on Google Flights →
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}>
+                    <path d="M2 2h8v8M10 2L2 10" />
+                  </svg>
+                </a>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── DAY CARDS ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginBottom: 32 }}>

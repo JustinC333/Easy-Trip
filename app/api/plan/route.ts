@@ -4,6 +4,13 @@ import { checkAndReserve, recordUsage } from '@/lib/costGuard'
 import { saveTrip } from '@/lib/tripStore'
 import { Itinerary } from '@/lib/types'
 
+const CABIN_CLASS_MAP: Record<number, string> = {
+  1: 'Economy',
+  2: 'Premium Economy',
+  3: 'Business',
+  4: 'First Class',
+}
+
 interface PlanRequest {
   destinations: Array<{ state: string; city: string }>
   startDate: string
@@ -18,6 +25,9 @@ interface PlanRequest {
   flightBudgetPerPerson?: number
   accommodationBudget?: number
   mustHaves?: string
+  departureCode?: string
+  departureCity?: string
+  cabinClass?: number
 }
 
 export async function POST(req: NextRequest) {
@@ -38,7 +48,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { destinations, startDate, endDate } = body
+  const { destinations, startDate, endDate, departureCode, departureCity, cabinClass, numberOfPeople, flightBudgetPerPerson } = body
   if (!destinations || destinations.length === 0) {
     return NextResponse.json({ error: 'At least one destination required' }, { status: 400 })
   }
@@ -53,10 +63,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Monthly AI limit reached', remaining: 0 }, { status: 429 })
   }
 
-  // Step 4 — Fetch enrichment data
+  // Step 4 — Fetch enrichment data (no flight search)
   console.log('[/api/plan] Step 4: Fetching enrichment...')
   const baseUrl = new URL(req.url).origin
-  let enrichedContext = { nps: null, places: null, hotels: null }
+  let enrichedContext: { nps: null | unknown; places: null | unknown; hotels: null | unknown; flights: null | unknown } = { nps: null, places: null, hotels: null, flights: null }
   try {
     const enrichRes = await fetch(`${baseUrl}/api/enrich`, {
       method: 'POST',
@@ -66,6 +76,10 @@ export async function POST(req: NextRequest) {
         state: destinations[0].state,
         startDate,
         endDate,
+        departureCode,
+        numberOfPeople,
+        cabinClass,
+        flightBudgetPerPerson,
       }),
     })
     if (enrichRes.ok) {
@@ -79,13 +93,19 @@ export async function POST(req: NextRequest) {
 
   // Step 5 — Generate itinerary
   console.log('[/api/plan] Step 5: Generating itinerary...')
+  const cabinClassText = CABIN_CLASS_MAP[cabinClass ?? 1] ?? 'Economy'
+
   let itinerary: Itinerary
   let tokensUsed = 0
   try {
     const generateRes = await fetch(`${baseUrl}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...body, enrichedContext }),
+      body: JSON.stringify({
+        ...body,
+        enrichedContext,
+        cabinClass: cabinClassText,
+      }),
     })
     if (!generateRes.ok) {
       const errData = await generateRes.json().catch(() => ({ error: 'Generation failed' }))
@@ -106,6 +126,45 @@ export async function POST(req: NextRequest) {
 
   // Step 7 — Save trip
   console.log('[/api/plan] Step 7: Saving trip...')
+  if (departureCity) itinerary.departureCity = departureCity
+  if (departureCode) itinerary.departureCode = departureCode
+  if (departureCode && flightBudgetPerPerson) {
+    itinerary.flightBudgetPerPerson = flightBudgetPerPerson
+    itinerary.cabinClass = cabinClassText
+  }
+
+  // Attach flight data from enrichment
+  if (enrichedContext?.flights) {
+    const flightData = enrichedContext.flights as {
+      flights?: unknown[]
+      arrivalAirport?: unknown
+      message?: string
+      googleFlightsUrl?: string
+    }
+    if (flightData.flights && (flightData.flights as unknown[]).length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      itinerary.flights = flightData.flights as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      itinerary.arrivalAirport = flightData.arrivalAirport as any
+    }
+    if (flightData.message) itinerary.flightMessage = flightData.message
+    if (flightData.googleFlightsUrl) itinerary.googleFlightsUrl = flightData.googleFlightsUrl
+    if (flightData.arrivalAirport) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      itinerary.arrivalAirport = flightData.arrivalAirport as any
+    }
+  }
+
+  // Store departure info for display
+  if (departureCode) {
+    itinerary.departureInfo = {
+      city: departureCity,
+      code: departureCode,
+      cabinClass: cabinClass,
+      budgetPerPerson: flightBudgetPerPerson,
+    }
+  }
+
   const destination = destinations.map(d => `${d.city}, ${d.state}`).join(' → ')
   const tripId = await saveTrip({
     userId: user.id,

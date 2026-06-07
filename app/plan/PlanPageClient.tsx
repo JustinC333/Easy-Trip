@@ -4,12 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-const STEPS = [
-  'Destination & Dates',
-  'Your Vibe',
-  'Budget & Group',
-  'Must Haves',
-];
+const STEPS_BASE = ['Destination & Dates', 'Your Vibe', 'Budget & Group', 'Must Haves'];
+const STEPS_FLIGHT = ['Destination & Dates', 'Your Vibe', 'Flight Details', 'Budget & Group', 'Must Haves'];
 
 const LOADING_MESSAGES = [
   'Analyzing your destinations...',
@@ -39,6 +35,9 @@ interface FormData {
   flightBudget: number;
   accommodationBudget: number;
   dailyBudget: number;
+  departureCity: string;
+  departureCode: string;
+  cabinClass: number;
 }
 
 const EMPTY_FORM: FormData = {
@@ -55,6 +54,9 @@ const EMPTY_FORM: FormData = {
   flightBudget: 0,
   accommodationBudget: 0,
   dailyBudget: 0,
+  departureCity: '',
+  departureCode: '',
+  cabinClass: 1,
 };
 
 /* ─── Logo ─── */
@@ -488,13 +490,267 @@ function PlacesCombobox({
   );
 }
 
+/* ─── Airport Autocomplete Combobox ─── */
+interface AirportSuggestion {
+  code: string;
+  name: string;
+  display: string;
+}
+
+interface AirportComboboxProps {
+  value: string;
+  onSelect: (city: string, code: string) => void;
+  onClear: () => void;
+  placeholder: string;
+  optional?: boolean;
+  showError?: boolean;
+}
+
+function AirportCombobox({ value, onSelect, onClear, placeholder, optional, showError }: AirportComboboxProps) {
+  const [query, setQuery] = useState(value);
+  const [open, setOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<AirportSuggestion[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => { if (!open) setQuery(value); }, [value, open]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery(value);
+        setSuggestions([]);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [value]);
+
+  const fetchSuggestions = (input: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (input.length < 2) { setSuggestions([]); setLoading(false); return; }
+    setLoading(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/flights/autocomplete?input=${encodeURIComponent(input)}`);
+        const data = await res.json();
+        setSuggestions(Array.isArray(data) ? data : []);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+  };
+
+  const select = (s: AirportSuggestion) => {
+    setQuery(s.display);
+    onSelect(s.name, s.code);
+    setSuggestions([]);
+    setOpen(false);
+    setActiveIdx(-1);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setQuery(v);
+    setOpen(true);
+    setActiveIdx(-1);
+    if (!v) { onClear(); setSuggestions([]); return; }
+    fetchSuggestions(v);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!open || suggestions.length === 0) { if (e.key === 'ArrowDown') { setOpen(true); e.preventDefault(); } return; }
+    if (e.key === 'ArrowDown') { setActiveIdx(i => Math.min(i + 1, suggestions.length - 1)); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { setActiveIdx(i => Math.max(i - 1, 0)); e.preventDefault(); }
+    else if (e.key === 'Enter' && activeIdx >= 0) { select(suggestions[activeIdx]); e.preventDefault(); }
+    else if (e.key === 'Escape') { setOpen(false); setQuery(value); setSuggestions([]); }
+  };
+
+  const isError = showError && !optional && !value;
+  const borderColor = isError ? 'rgba(239,68,68,0.65)' : open ? C.borderFocus : C.border;
+  const bg = isError ? 'rgba(239,68,68,0.05)' : open ? 'rgba(30,138,82,0.06)' : 'rgba(255,255,255,0.05)';
+  const showList = open && (loading || suggestions.length > 0);
+
+  const planeIcon = (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}>
+      <path d="M2.5 13.5L6 10l-2.5-5L5 4l6 4 4-2a1.5 1.5 0 0 1 0 3l-4-2-2 6-1.5.5L6 12l-3.5 1.5z" />
+    </svg>
+  );
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }}>
+        <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: isError ? 'rgba(239,68,68,0.7)' : open ? C.greenBright : C.textMuted, transition: 'color 0.2s', pointerEvents: 'none', zIndex: 1 }}>
+          {planeIcon}
+        </span>
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={query}
+          onChange={handleChange}
+          onFocus={() => { setOpen(true); if (query.length >= 2) fetchSuggestions(query); }}
+          onKeyDown={handleKeyDown}
+          autoComplete="off"
+          style={{
+            ...inputStyle,
+            paddingLeft: 42,
+            paddingRight: 36,
+            border: `1px solid ${borderColor}`,
+            background: bg,
+          }}
+        />
+        <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: C.textMuted, pointerEvents: 'none' }}>
+          {loading ? (
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ width: 13, height: 13, animation: 'spin 0.7s linear infinite' }}>
+              <path d="M8 2v3M8 11v3M2 8h3M11 8h3M3.5 3.5l2.1 2.1M10.4 10.4l2.1 2.1M3.5 12.5l2.1-2.1M10.4 5.6l2.1-2.1" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
+              <path d="M4 6l4 4 4-4" />
+            </svg>
+          )}
+        </span>
+      </div>
+
+      {isError && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, fontSize: 12, color: 'rgba(239,68,68,0.9)', fontWeight: 500 }}>
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ width: 11, height: 11, flexShrink: 0 }}>
+            <circle cx="7" cy="7" r="6" /><path d="M7 4v3M7 10v.5" />
+          </svg>
+          Please select your departure airport
+        </div>
+      )}
+
+      {showList && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 200,
+          background: '#0c1828', border: `1px solid ${C.border}`, borderRadius: 10,
+          maxHeight: 220, overflowY: 'auto', boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
+        }}>
+          {loading && suggestions.length === 0 ? (
+            <div style={{ padding: '12px 14px', fontSize: 13, color: C.textMuted, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ width: 12, height: 12, animation: 'spin 0.7s linear infinite', flexShrink: 0 }}>
+                <path d="M8 2v3M8 11v3M2 8h3M11 8h3M3.5 3.5l2.1 2.1M10.4 10.4l2.1 2.1M3.5 12.5l2.1-2.1M10.4 5.6l2.1-2.1" />
+              </svg>
+              Searching airports...
+            </div>
+          ) : suggestions.map((s, i) => (
+            <div key={s.code}
+              onMouseDown={e => { e.preventDefault(); select(s); }}
+              onMouseEnter={() => setActiveIdx(i)}
+              style={{
+                padding: '10px 14px', fontSize: 14, cursor: 'pointer',
+                background: i === activeIdx ? 'rgba(30,138,82,0.22)' : 'transparent',
+                color: i === activeIdx ? C.greenBright : C.textSecondary,
+                transition: 'background 0.1s ease',
+                display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+              <span style={{
+                fontWeight: 700, fontSize: 12,
+                color: i === activeIdx ? C.greenBright : C.textMuted,
+                fontFamily: 'monospace', letterSpacing: '0.05em', flexShrink: 0,
+                background: i === activeIdx ? 'rgba(52,212,117,0.1)' : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${i === activeIdx ? 'rgba(52,212,117,0.3)' : C.border}`,
+                borderRadius: 5, padding: '1px 6px',
+              }}>{s.code}</span>
+              <span>{s.name || s.display}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Step 2.5: Flight Details ─── */
+function StepFlight({ data, onChange, showErrors }: { data: FormData; onChange: (u: Partial<FormData>) => void; showErrors: boolean }) {
+  const isFlying = data.transportation === 'Flying';
+
+  const cabinOptions = [
+    { label: 'Economy', value: 1 },
+    { label: 'Premium Economy', value: 2 },
+    { label: 'Business', value: 3 },
+    { label: 'First Class', value: 4 },
+  ];
+
+  const pillStyle = (selected: boolean): React.CSSProperties => ({
+    background: selected ? C.selectedBg : C.surface,
+    border: `1px solid ${selected ? C.selectedBorder : C.border}`,
+    borderRadius: 100, padding: '9px 18px', cursor: 'pointer',
+    fontSize: 13, fontWeight: selected ? 600 : 400,
+    color: selected ? C.greenBright : C.textSecondary,
+    transition: 'all 0.2s ease',
+    boxShadow: selected ? '0 0 12px rgba(52,212,117,0.12)' : 'none',
+  });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      <div>
+        <h2 className="et-display" style={{ fontSize: 'clamp(26px,5vw,36px)', fontWeight: 700, color: C.textPrimary, marginBottom: 8, lineHeight: 1.2 }}>
+          Flight Details
+        </h2>
+        <p style={{ fontSize: 14, color: C.textMuted, lineHeight: 1.6 }}>
+          {isFlying
+            ? "Tell us where you're flying from and your cabin preference."
+            : "Optionally add your departure airport and cabin preference."}
+        </p>
+      </div>
+
+      {/* Section 1: Departure Airport */}
+      <div>
+        <FieldLabel>
+          Where are you flying from?{' '}
+          {!isFlying && <span style={{ fontSize: 11, color: C.textMuted, fontWeight: 400 }}>(optional)</span>}
+        </FieldLabel>
+        <AirportCombobox
+          value={data.departureCode ? `${data.departureCity} (${data.departureCode})` : ''}
+          onSelect={(city, code) => onChange({ departureCity: city, departureCode: code })}
+          onClear={() => onChange({ departureCity: '', departureCode: '' })}
+          placeholder="e.g. Los Angeles, New York, Chicago..."
+          optional={!isFlying}
+          showError={showErrors}
+        />
+        {!isFlying && (
+          <div style={{
+            marginTop: 10, padding: '10px 13px',
+            background: 'rgba(255,255,255,0.03)',
+            border: `1px solid ${C.border}`,
+            borderRadius: 8, fontSize: 12, color: C.textMuted, lineHeight: 1.5,
+          }}>
+            Optional — leave blank if you're still deciding on transportation
+          </div>
+        )}
+      </div>
+
+      {/* Section 2: Cabin Class */}
+      <div>
+        <FieldLabel>Cabin class preference</FieldLabel>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {cabinOptions.map(opt => (
+            <button key={opt.value}
+              onClick={() => onChange({ cabinClass: opt.value })}
+              style={pillStyle(data.cabinClass === opt.value)}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Step progress ─── */
-function ProgressBar({ step }: { step: number }) {
+function ProgressBar({ step, steps }: { step: number; steps: string[] }) {
   return (
     <div className="w-full mb-4">
       {/* Step labels */}
       <div className="flex justify-between mb-2 gap-2">
-        {STEPS.map((label, i) => (
+        {steps.map((label, i) => (
           <div key={i} className="flex-1 text-center">
             <div className="flex flex-col items-center gap-1.5">
               <div
@@ -532,14 +788,14 @@ function ProgressBar({ step }: { step: number }) {
         <div
           className="h-full rounded-sm bg-[linear-gradient(90deg,#34d475,#1e8a52)] shadow-[0_0_10px_rgba(52,212,117,0.4)]"
           style={{
-            width: `${(step / (STEPS.length - 1)) * 100}%`,
+            width: steps.length > 1 ? `${(step / (steps.length - 1)) * 100}%` : '0%',
             transition: 'width 0.5s cubic-bezier(0.34,1.56,0.64,1)',
           }}
         />
       </div>
       {/* Current step label */}
       <div className="text-center mt-2 text-[13px] font-medium tracking-[0.02em] text-[rgba(255,255,255,0.38)]">
-        Step {step + 1} of {STEPS.length} — <span className="text-[#34d475]">{STEPS[step]}</span>
+        Step {step + 1} of {steps.length} — <span className="text-[#34d475]">{steps[step]}</span>
       </div>
     </div>
   );
@@ -1334,7 +1590,7 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
           {isFlying && (
             <div>
               <FieldLabel>
-                Flight budget per person{' '}
+                Flight budget per person (round trip){' '}
                 {flightRequired && <span style={{ color: '#f87171' }}>*</span>}
                 {!flightRequired && <span style={{ fontSize: 11, color: C.textMuted, fontWeight: 400 }}>(optional)</span>}
               </FieldLabel>
@@ -1563,7 +1819,14 @@ function Step3({ data, onChange }: { data: FormData; onChange: (u: Partial<FormD
         <FieldLabel>How are you getting there?</FieldLabel>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {transports.map(t => (
-            <button key={t} onClick={() => onChange({ transportation: t })}
+            <button key={t} onClick={() => {
+              const updates: Partial<FormData> = { transportation: t };
+              if (t === 'Driving') {
+                updates.departureCity = '';
+                updates.departureCode = '';
+              }
+              onChange(updates);
+            }}
               style={{
                 background: data.transportation === t ? C.selectedBg : C.surface,
                 border: `1px solid ${data.transportation === t ? C.selectedBorder : C.border}`,
@@ -1892,6 +2155,8 @@ export default function PlanPageClient() {
       ...(form.flightBudget > 0 && { flightBudgetPerPerson: form.flightBudget }),
       ...(form.accommodationBudget > 0 && { accommodationBudget: form.accommodationBudget }),
       ...(form.mustHaves && { mustHaves: form.mustHaves }),
+      ...(form.departureCode && { departureCode: form.departureCode, departureCity: form.departureCity }),
+      cabinClass: form.cabinClass,
     };
 
     try {
@@ -1923,6 +2188,10 @@ export default function PlanPageClient() {
   };
 
   const today = new Date().toISOString().split('T')[0];
+  const isFlying = form.transportation === 'Flying' || form.transportation === 'Either / Flexible';
+  const steps = isFlying ? STEPS_FLIGHT : STEPS_BASE;
+  const budgetStep = isFlying ? 3 : 2;
+  const mustHaveStep = isFlying ? 4 : 3;
 
   const canProceed = () => {
     if (step === 0) {
@@ -1934,8 +2203,13 @@ export default function PlanPageClient() {
       );
     }
     if (step === 1) return true;
-    if (step === 2) {
-      const isFlying = form.transportation === 'Flying' || form.transportation === 'Either / Flexible';
+    // Step 2 is either Flight Details (flying) or Budget & Group (driving)
+    if (step === 2 && isFlying) {
+      // Flight step: departure required only if Flying (not Either/Flexible)
+      if (form.transportation === 'Flying' && !form.departureCode) return false;
+      return true;
+    }
+    if (step === budgetStep) {
       const isCamping = form.accommodation === 'Camping';
       const needsCount = form.groupSize === 'small' || form.groupSize === 'large';
       if (!form.groupSize) return false;
@@ -1944,7 +2218,6 @@ export default function PlanPageClient() {
       const flightReq = form.transportation === 'Flying';
       if (flightReq && form.flightBudget <= 0) return false;
       if (!isCamping && form.accommodationBudget <= 0) return false;
-      // Real-time budget validation
       const hc = form.groupSize === 'solo' ? 1
         : form.groupSize === 'couple' ? 2
         : form.groupCount > 0 ? form.groupCount
@@ -2010,14 +2283,14 @@ export default function PlanPageClient() {
           opacity: step === 1 ? 1 : 0,
           transition: 'opacity 0.65s ease',
         }} />
-        {/* Outdoor image — step 2 only (Budget & Group) */}
+        {/* Outdoor image — Budget & Group step */}
         <img
           src="/features/outdoor image.jpg"
           alt=""
           style={{
             position: 'absolute', inset: 0, width: '100%', height: '100%',
             objectFit: 'cover', objectPosition: 'center',
-            opacity: step === 2 ? 1 : 0,
+            opacity: step === budgetStep ? 1 : 0,
             transition: 'opacity 0.65s ease',
           }}
         />
@@ -2025,12 +2298,12 @@ export default function PlanPageClient() {
         <div style={{
           position: 'absolute', inset: 0,
           background: 'linear-gradient(to bottom, rgba(3,8,16,0.58) 0%, rgba(3,8,16,0.48) 50%, rgba(3,8,16,0.68) 100%)',
-          opacity: step === 2 ? 1 : 0,
+          opacity: step === budgetStep ? 1 : 0,
           transition: 'opacity 0.65s ease',
         }} />
-        {/* Aurora blobs — step 3 only */}
-        <div className="aurora-a" style={{ position: 'absolute', top: '-10%', left: '20%', width: 700, height: 500, borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(26,130,78,0.18) 0%, transparent 70%)', opacity: step > 2 ? 1 : 0, transition: 'opacity 0.65s ease' }} />
-        <div className="aurora-b" style={{ position: 'absolute', bottom: '10%', right: '15%', width: 500, height: 400, borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(13,107,53,0.14) 0%, transparent 70%)', opacity: step > 2 ? 1 : 0, transition: 'opacity 0.65s ease' }} />
+        {/* Aurora blobs — steps beyond budget */}
+        <div className="aurora-a" style={{ position: 'absolute', top: '-10%', left: '20%', width: 700, height: 500, borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(26,130,78,0.18) 0%, transparent 70%)', opacity: step > budgetStep ? 1 : 0, transition: 'opacity 0.65s ease' }} />
+        <div className="aurora-b" style={{ position: 'absolute', bottom: '10%', right: '15%', width: 500, height: 400, borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(13,107,53,0.14) 0%, transparent 70%)', opacity: step > budgetStep ? 1 : 0, transition: 'opacity 0.65s ease' }} />
         <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.03 }}>
           <filter id="grain-plan"><feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="3" stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /></filter>
           <rect width="100%" height="100%" filter="url(#grain-plan)" />
@@ -2128,20 +2401,20 @@ export default function PlanPageClient() {
         <div style={{ minWidth: 0 }}>
           <TokenUsageBanner usage={usage} />
           <div style={{
-            background: step <= 2 ? 'rgba(3,8,16,0.78)' : 'transparent',
-            backdropFilter: step <= 2 ? 'blur(18px)' : 'none',
-            borderRadius: step <= 2 ? 16 : 0,
-            padding: step <= 2 ? '12px 20px 6px' : '0',
-            marginBottom: step <= 2 ? 8 : 0,
+            background: step <= budgetStep ? 'rgba(3,8,16,0.78)' : 'transparent',
+            backdropFilter: step <= budgetStep ? 'blur(18px)' : 'none',
+            borderRadius: step <= budgetStep ? 16 : 0,
+            padding: step <= budgetStep ? '12px 20px 6px' : '0',
+            marginBottom: step <= budgetStep ? 8 : 0,
             transition: 'background 0.65s ease, padding 0.65s ease, margin 0.65s ease',
           }}>
-            <ProgressBar step={step} />
+            <ProgressBar step={step} steps={steps} />
           </div>
 
           {/* Step panel */}
           <div style={{
-            background: step <= 2 ? 'rgba(3,8,16,0.74)' : 'rgba(255,255,255,0.03)',
-            backdropFilter: step <= 2 ? 'blur(18px) saturate(1.2)' : 'none',
+            background: step <= budgetStep ? 'rgba(3,8,16,0.74)' : 'rgba(255,255,255,0.03)',
+            backdropFilter: step <= budgetStep ? 'blur(18px) saturate(1.2)' : 'none',
             border: `1px solid ${C.border}`,
             borderRadius: 20,
             padding: 'clamp(24px,4vw,40px)',
@@ -2151,8 +2424,9 @@ export default function PlanPageClient() {
           }}>
             {step === 0 && <Step1 data={form} onChange={update} showErrors={showErrors} />}
             {step === 1 && <Step3 data={form} onChange={update} />}
-            {step === 2 && <Step2 data={form} onChange={update} showErrors={showErrors} />}
-            {step === 3 && <Step4 data={form} onChange={update} onSubmit={handleSubmit} loading={loading} submitError={submitError} />}
+            {step === 2 && isFlying && <StepFlight data={form} onChange={update} showErrors={showErrors} />}
+            {step === budgetStep && <Step2 data={form} onChange={update} showErrors={showErrors} />}
+            {step === mustHaveStep && <Step4 data={form} onChange={update} onSubmit={handleSubmit} loading={loading} submitError={submitError} />}
           </div>
 
           {/* Nav buttons */}
@@ -2195,7 +2469,7 @@ export default function PlanPageClient() {
               </button>
             )}
 
-            {step < STEPS.length - 1 && (
+            {step < steps.length - 1 && (
               <button
                 onClick={handleNext}
                 style={{
