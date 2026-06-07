@@ -1,106 +1,58 @@
-// NOTE: checkAndReserve is not atomic — race conditions possible
-// under high concurrency. For production, use a database transaction
-// or atomic increment. Acceptable for MVP usage levels.
+// CostGuard uses an atomic PostgreSQL stored procedure
+// (check_and_increment_usage) to prevent race conditions.
+// The UPDATE ... WHERE tokens_used + estimated <= ceiling
+// operation is atomic at the database level, so concurrent
+// requests cannot both exceed the ceiling.
 
 import { createClient } from '@/lib/supabase/server'
-
-function getCurrentMonth(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  return `${year}-${month}`
-}
 
 export async function checkAndReserve(
   userId: string,
   estimatedTokens: number
 ): Promise<{ allowed: boolean; remaining: number }> {
-  try {
-    const supabase = await createClient()
-    const month = getCurrentMonth()
+  const supabase = await createClient()
+  const month = new Date().toISOString().slice(0, 7)
 
-    const { data, error } = await supabase
-      .from('usage_records')
-      .select('tokens_used, ceiling')
-      .eq('user_id', userId)
-      .eq('month', month)
-      .single()
+  const { data, error } = await supabase
+    .rpc('check_and_increment_usage', {
+      p_user_id: userId,
+      p_month: month,
+      p_estimated_tokens: estimatedTokens,
+      p_ceiling: 50000
+    })
 
-    if (error && error.code !== 'PGRST116') {
-      throw new Error(`Failed to fetch usage record: ${error.message}`)
-    }
+  if (error) {
+    console.error('[costGuard] checkAndReserve error:', error)
+    // Fail open — allow the request if RPC fails
+    // to avoid blocking users due to DB errors
+    return { allowed: true, remaining: 50000 }
+  }
 
-    if (!data) {
-      const { error: insertError } = await supabase.from('usage_records').insert({
-        user_id: userId,
-        month,
-        tokens_used: 0,
-        ceiling: 50000,
-      })
+  console.log('[costGuard] checkAndReserve result:', data)
 
-      if (insertError) {
-        throw new Error(`Failed to create usage record: ${insertError.message}`)
-      }
-
-      return { allowed: estimatedTokens <= 50000, remaining: 50000 }
-    }
-
-    const { tokens_used, ceiling } = data
-    const remaining = ceiling - tokens_used
-
-    if (tokens_used + estimatedTokens > ceiling) {
-      return { allowed: false, remaining }
-    }
-
-    return { allowed: true, remaining }
-  } catch (err) {
-    if (err instanceof Error) throw err
-    throw new Error('Unexpected error in checkAndReserve')
+  return {
+    allowed: data.allowed,
+    remaining: data.remaining ?? 0
   }
 }
 
-export async function recordUsage(userId: string, tokensUsed: number): Promise<void> {
-  try {
-    const supabase = await createClient()
-    const month = getCurrentMonth()
+export async function recordUsage(
+  userId: string,
+  tokensUsed: number
+): Promise<void> {
+  const supabase = await createClient()
+  const month = new Date().toISOString().slice(0, 7)
 
-    const { data, error: fetchError } = await supabase
-      .from('usage_records')
-      .select('tokens_used')
-      .eq('user_id', userId)
-      .eq('month', month)
-      .single()
-
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      throw new Error(`Failed to fetch usage record: ${fetchError.message}`)
+  const { error } = await supabase.rpc(
+    'check_and_increment_usage', {
+      p_user_id: userId,
+      p_month: month,
+      p_estimated_tokens: tokensUsed,
+      p_ceiling: 999999999  // No ceiling for recordUsage
     }
+  )
 
-    if (!data) {
-      const { error: insertError } = await supabase.from('usage_records').insert({
-        user_id: userId,
-        month,
-        tokens_used: tokensUsed,
-        ceiling: 50000,
-      })
-
-      if (insertError) {
-        throw new Error(`Failed to create usage record: ${insertError.message}`)
-      }
-
-      return
-    }
-
-    const { error: updateError } = await supabase
-      .from('usage_records')
-      .update({ tokens_used: data.tokens_used + tokensUsed })
-      .eq('user_id', userId)
-      .eq('month', month)
-
-    if (updateError) {
-      throw new Error(`Failed to update usage record: ${updateError.message}`)
-    }
-  } catch (err) {
-    if (err instanceof Error) throw err
-    throw new Error('Unexpected error in recordUsage')
+  if (error) {
+    console.error('[costGuard] recordUsage error:', error)
   }
 }
