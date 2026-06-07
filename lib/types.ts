@@ -80,6 +80,8 @@ export type Itinerary = {
   arrivalAirport?: ArrivalAirport
   flightMessage?: string
   googleFlightsUrl?: string
+  hotels?: { name: string; pricePerNight: number | null; url?: string }[]
+  accommodationType?: string
 }
 
 export type UsageRecord = {

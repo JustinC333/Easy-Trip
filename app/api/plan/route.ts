@@ -133,6 +133,16 @@ export async function POST(req: NextRequest) {
     itinerary.cabinClass = cabinClassText
   }
 
+  // Attach hotel data from enrichment
+  if (enrichedContext?.hotels) {
+    const hotelData = enrichedContext.hotels as { options?: unknown[] }
+    if (hotelData.options) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      itinerary.hotels = hotelData.options as any
+    }
+  }
+  itinerary.accommodationType = body.accommodation
+
   // Attach flight data from enrichment
   if (enrichedContext?.flights) {
     const flightData = enrichedContext.flights as {

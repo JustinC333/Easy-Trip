@@ -839,6 +839,115 @@ function ItineraryView({ trip, onLogout, userEmail }: { trip: Trip; onLogout: ()
           })}
         </div>
 
+        {/* ── HOTELS ── */}
+        {(() => {
+          const accType = itin.accommodationType ?? 'Hotel'
+          if (accType === 'Camping') return null
+          if (!itin.hotels || itin.hotels.length === 0) return null
+
+          const isAirbnb = accType === 'Airbnb / VRBO'
+          const isHostel = accType === 'Hostel'
+
+          const titleEmoji = isAirbnb ? '🏠' : isHostel ? '🛏' : '🏨'
+          const sectionTitle = `${titleEmoji} Where to Stay`
+
+          const destSlug = encodeURIComponent(trip.destination.split(',')[0].trim())
+          const bookingUrl = isAirbnb
+            ? `https://www.airbnb.com/s/${destSlug}/homes`
+            : `https://www.booking.com/searchresults.html?ss=${destSlug}`
+          const bookingLabel = isAirbnb ? 'Search on Airbnb →' : 'Search on Booking.com →'
+
+          const isNationalPark = trip.destination.toLowerCase().includes('national park')
+          const parkName = isNationalPark
+            ? trip.destination.split(',')[0].trim()
+            : ''
+
+          return (
+            <div style={{
+              marginBottom: 32,
+              animation: `trip-fadein 0.5s ease-out ${0.12 + itin.days.length * 0.06 + 0.05}s both`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                  background: 'rgba(52,212,117,0.1)',
+                  border: '1px solid rgba(52,212,117,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke={C.greenBright} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                    <rect x="1" y="7" width="14" height="8" rx="1.5" />
+                    <path d="M4 7V5a4 4 0 0 1 8 0v2" />
+                    <circle cx="8" cy="11" r="1.2" />
+                  </svg>
+                </div>
+                <h2 className="et-display" style={{ fontSize: 18, fontWeight: 600, color: C.textPrimary, margin: 0, letterSpacing: '-0.01em' }}>
+                  {sectionTitle}
+                </h2>
+              </div>
+
+              {isNationalPark && (
+                <div style={{
+                  marginTop: 10, marginBottom: 14, paddingLeft: 42,
+                  fontSize: 13, color: C.textMuted, lineHeight: 1.65,
+                  background: 'rgba(52,212,117,0.05)',
+                  border: '1px solid rgba(52,212,117,0.15)',
+                  borderRadius: 10, padding: '10px 14px',
+                }}>
+                  💡 <strong style={{ color: C.textSecondary }}>Tip:</strong> Park lodges and campsites inside <strong style={{ color: C.textSecondary }}>{parkName}</strong> book up months in advance. Search the park&apos;s official site for on-site options alongside these nearby hotels.
+                </div>
+              )}
+
+              {isAirbnb && (
+                <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 14, paddingLeft: 42 }}>
+                  Booking.com prices shown for reference — search Airbnb for your actual stay.
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+                {itin.hotels.slice(0, 5).map((hotel, i) => (
+                  <div key={i} style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 12, padding: '14px 16px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                  }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: C.textPrimary }}>{hotel.name}</div>
+                    {hotel.pricePerNight != null && (
+                      <div style={{ flexShrink: 0, fontSize: 14, fontWeight: 700, color: C.greenBright }}>
+                        ${Math.round(hotel.pricePerNight).toLocaleString()}
+                        <span style={{ fontSize: 11, fontWeight: 400, color: C.textMuted }}>/night</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <a
+                href={bookingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: 'linear-gradient(140deg,#1e8a52 0%,#0d5530 100%)',
+                  border: '1px solid rgba(50,160,100,0.35)',
+                  borderRadius: 10, padding: '11px 20px',
+                  fontSize: 14, fontWeight: 600,
+                  color: 'white', textDecoration: 'none',
+                  boxShadow: '0 0 20px rgba(26,130,78,0.28)',
+                  transition: 'box-shadow 0.2s ease, transform 0.15s ease',
+                }}
+                onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { boxShadow: '0 0 32px rgba(26,130,78,0.5)', transform: 'translateY(-1px)' })}
+                onMouseLeave={e => Object.assign((e.currentTarget as HTMLElement).style, { boxShadow: '0 0 20px rgba(26,130,78,0.28)', transform: 'translateY(0)' })}
+              >
+                {bookingLabel}
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}>
+                  <path d="M2 2h8v8M10 2L2 10" />
+                </svg>
+              </a>
+            </div>
+          )
+        })()}
+
         {/* ── TRAVEL TIPS ── */}
         {itin.tips && itin.tips.length > 0 && (
           <div style={{
