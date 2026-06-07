@@ -1350,11 +1350,19 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
     return perPerson - data.flightBudget;
   })();
 
+  const isPerPersonAccom = ['Hotel', 'Hostel', 'Flexible'].includes(data.accommodation);
   let accommodationPerPersonTotal = 0;
   let totalAccommodationCost = 0;
   if (!isCamping && data.accommodationBudget > 0 && numberOfNights > 0) {
-    totalAccommodationCost = data.accommodationBudget * numberOfNights;
-    accommodationPerPersonTotal = totalAccommodationCost / headCount;
+    if (isPerPersonAccom) {
+      // Hotel/Hostel/Flexible: budget is per person per night
+      accommodationPerPersonTotal = data.accommodationBudget * numberOfNights;
+      totalAccommodationCost = data.accommodationBudget * numberOfNights * headCount;
+    } else {
+      // Airbnb/VRBO: budget is total per night (shared)
+      totalAccommodationCost = data.accommodationBudget * numberOfNights;
+      accommodationPerPersonTotal = totalAccommodationCost / headCount;
+    }
   }
 
   const remainingAfterAccom = remainingAfterFlight !== null && accommodationPerPersonTotal > 0
@@ -1367,16 +1375,20 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
   const accomValid = isCamping || (!accomLocked && data.accommodationBudget > 0 && !accomExceedsBudget);
 
   const totalFlightCost = isFlying && flightValid && data.flightBudget > 0 ? data.flightBudget * headCount : 0;
-  const showSummary = perPerson !== null && flightValid && accomValid && data.budget >= 100;
-  const remainingBuffer = showSummary ? data.budget - totalFlightCost - (isCamping ? 0 : totalAccommodationCost) : null;
+  const hasFlightBudget = !isFlying || (data.flightBudget > 0 && flightValid);
+  const hasAccomBudget = isCamping || (data.accommodationBudget > 0 && accomValid);
+  const showSummary = perPerson !== null && data.budget >= 100 && hasFlightBudget && hasAccomBudget;
+  const remainingPerPerson = isCamping
+    ? (remainingAfterFlight ?? perPerson ?? 0)
+    : (remainingAfterAccom ?? 0);
 
   const accomTypeName = data.accommodation || 'accommodation';
 
   const accomInfo = () => {
-    if (data.accommodation === 'Hotel') return { label: 'Hotel budget per night (total)', placeholder: '150' };
-    if (data.accommodation === 'Airbnb / VRBO') return { label: 'Airbnb/VRBO budget per night (total)', placeholder: '200' };
-    if (data.accommodation === 'Hostel') return { label: 'Hostel budget per night (total)', placeholder: '50' };
-    return { label: 'Accommodation budget per night (total)', placeholder: '100' };
+    if (data.accommodation === 'Hotel') return { label: 'Hotel budget per person per night', placeholder: '150' };
+    if (data.accommodation === 'Airbnb / VRBO') return { label: 'Airbnb/VRBO budget per night (total, shared)', placeholder: '200' };
+    if (data.accommodation === 'Hostel') return { label: 'Hostel budget per person per night', placeholder: '50' };
+    return { label: 'Accommodation budget per person per night', placeholder: '100' };
   };
 
   const displayBudget = data.budget >= 100000 ? 'Unlimited' : data.budget >= 100 ? `$${data.budget.toLocaleString()}` : '—';
@@ -1626,8 +1638,8 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
                     <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, flexShrink: 0 }}>
                       <path d="M2 7l3.5 3.5L12 3" />
                     </svg>
-                    Remaining budget per person after flights:{' '}
-                    <strong style={{ marginLeft: 3 }}>${(perPerson - data.flightBudget).toLocaleString()}</strong>
+                    Remaining after flights:{' '}
+                    <strong style={{ marginLeft: 3 }}>${remainingAfterFlight?.toLocaleString()}/person</strong>
                   </div>
                 )
               )}
@@ -1658,7 +1670,8 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 8, padding: '10px 13px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, fontSize: 13, color: 'rgba(248,113,113,0.9)', lineHeight: 1.5 }}>
                     {errIcon}
                     <span>
-                      ${data.accommodationBudget.toLocaleString()}/night × {numberOfNights} night{numberOfNights !== 1 ? 's' : ''} = <strong>${Math.round(totalAccommodationCost).toLocaleString()} total</strong> (${Math.round(accommodationPerPersonTotal).toLocaleString()}/person), which exceeds your <strong>${Math.round(remainingAfterFlight).toLocaleString()}</strong> remaining per person.
+                      Accommodation cost exceeds your remaining budget of <strong>${Math.round(remainingAfterFlight ?? 0).toLocaleString()}/person</strong>
+                      {' '}(${Math.round(accommodationPerPersonTotal).toLocaleString()}/person for {numberOfNights} night{numberOfNights !== 1 ? 's' : ''})
                     </span>
                   </div>
                 ) : accomAtZero ? (
@@ -1676,9 +1689,9 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
                       <path d="M2 7l3.5 3.5L12 3" />
                     </svg>
                     <span>
-                      Total accommodation cost: <strong>${Math.round(totalAccommodationCost).toLocaleString()}</strong>{' '}
-                      (${Math.round(accommodationPerPersonTotal).toLocaleString()}/person for {numberOfNights} night{numberOfNights !== 1 ? 's' : ''})
-                      {' · '}Remaining per person: <strong>${(remainingAfterAccom ?? 0).toLocaleString()}</strong>
+                      ${Math.round(accommodationPerPersonTotal).toLocaleString()}/person for {numberOfNights} night{numberOfNights !== 1 ? 's' : ''}
+                      {' · '}Remaining after flights &amp; accommodation:{' '}
+                      <strong>${(remainingAfterAccom ?? 0).toLocaleString()}/person</strong>
                     </span>
                   </div>
                 )
@@ -1695,7 +1708,7 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
           )}
 
           {/* Trip budget summary card */}
-          {showSummary && remainingBuffer !== null && (
+          {showSummary && (
             <div style={{
               background: 'rgba(255,255,255,0.035)',
               border: `1px solid ${C.border}`,
@@ -1705,7 +1718,7 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
               animation: 'fadeUp 0.3s ease',
             }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: C.textMuted, textTransform: 'uppercase', marginBottom: 14 }}>
-                Trip Budget Summary
+                Budget Summary
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7, fontSize: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: C.textSecondary }}>
@@ -1717,29 +1730,35 @@ function Step2({ data, onChange, showErrors }: { data: FormData; onChange: (u: P
                   <span style={{ color: C.textPrimary, fontWeight: 600 }}>${perPerson!.toLocaleString()}</span>
                 </div>
                 <div style={{ height: 1, background: C.border, margin: '3px 0' }} />
-                {isFlying && flightValid && data.flightBudget > 0 && (
+                {isFlying && data.flightBudget > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: C.textSecondary }}>
-                    <span>Flights (×{headCount})</span>
-                    <span>${totalFlightCost.toLocaleString()}</span>
+                    <span>Flights (round trip)</span>
+                    <span>−${data.flightBudget.toLocaleString()}</span>
                   </div>
                 )}
-                {!isCamping && accomValid && data.accommodationBudget > 0 && (
+                {!isCamping && data.accommodationBudget > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: C.textSecondary }}>
                     <span>{accomTypeName}</span>
-                    <span>${Math.round(totalAccommodationCost).toLocaleString()}</span>
+                    <span>−${Math.round(accommodationPerPersonTotal).toLocaleString()}</span>
+                  </div>
+                )}
+                {isCamping && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: C.textSecondary }}>
+                    <span>Camping (auto-estimated)</span>
+                    <span style={{ color: C.textMuted }}>~$20–50/night</span>
                   </div>
                 )}
                 <div style={{ height: 1, background: C.border, margin: '3px 0' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-                  <span style={{ color: C.textSecondary }}>Remaining buffer</span>
+                  <span style={{ color: C.textSecondary }}>Remaining per person</span>
                   <span style={{
-                    color: remainingBuffer > data.budget * 0.1
+                    color: remainingPerPerson > perPerson! * 0.2
                       ? C.greenBright
-                      : remainingBuffer > data.budget * 0.05
+                      : remainingPerPerson > perPerson! * 0.1
                         ? '#fbbf24'
                         : '#f87171',
                   }}>
-                    ${Math.round(remainingBuffer).toLocaleString()}
+                    ${Math.round(remainingPerPerson).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -2228,7 +2247,10 @@ export default function PlanPageClient() {
         if (!isCamping) {
           const rem = bpp - (form.flightBudget > 0 ? form.flightBudget : 0);
           const nights = tripDuration(form.startDate, form.endDate)?.nights ?? 0;
-          const accomPPTotal = (form.accommodationBudget * nights) / hc;
+          const isPerPerson = ['Hotel', 'Hostel', 'Flexible'].includes(form.accommodation);
+          const accomPPTotal = isPerPerson
+            ? form.accommodationBudget * nights
+            : (form.accommodationBudget * nights) / hc;
           if (accomPPTotal >= rem) return false;
         }
       }
