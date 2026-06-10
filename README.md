@@ -205,7 +205,8 @@ The app is deployed on Vercel. To deploy your own instance:
 
 ## Demo Video
 [Link to FIRST YouTube Demo](https://youtu.be/XqVf0PjyMLg)
-[Link to SECOND YouTube Demo] (https://youtu.be/EkhK7O-ZYpU)
+
+[Link to SECOND YouTube Demo](https://youtu.be/EkhK7O-ZYpU)
 
 ## Transcripts
 See the `transcripts/` folder for 3 representative interaction logs.
