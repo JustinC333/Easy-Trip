@@ -204,7 +204,8 @@ The app is deployed on Vercel. To deploy your own instance:
 - Flight data integration is planned but not yet implemented
 
 ## Demo Video
-[Link to YouTube Demo](https://youtu.be/XqVf0PjyMLg)
+[Link to FIRST YouTube Demo](https://youtu.be/XqVf0PjyMLg)
+[Link to SECOND YouTube Demo] (https://youtu.be/EkhK7O-ZYpU)
 
 ## Transcripts
 See the `transcripts/` folder for 3 representative interaction logs.

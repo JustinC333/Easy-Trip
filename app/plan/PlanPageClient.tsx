@@ -543,7 +543,7 @@ function AirportCombobox({ value, onSelect, onClear, placeholder, optional, show
       } finally {
         setLoading(false);
       }
-    }, 250);
+    }, 500);
   };
 
   const select = (s: AirportSuggestion) => {

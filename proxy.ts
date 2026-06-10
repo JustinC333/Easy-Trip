@@ -24,7 +24,15 @@ export async function proxy(request: NextRequest) {
   )
 
   // Refresh session — do not add logic between createServerClient and getUser()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  // If the refresh token is invalid/expired, clear the stale auth cookies so
+  // the browser stops sending them and the errors stop recurring.
+  if (authError) {
+    request.cookies.getAll()
+      .filter(({ name }) => name.startsWith('sb-'))
+      .forEach(({ name }) => supabaseResponse.cookies.delete(name))
+  }
 
   const { pathname } = request.nextUrl
 
